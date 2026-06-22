@@ -1,0 +1,116 @@
+{
+  "realm": "fashion-shop",
+  "enabled": true,
+  "displayName": "MAISON",
+  "loginTheme": "maison",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["vi"],
+  "defaultLocale": "vi",
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      { "name": "ADMIN", "description": "Quản trị viên hệ thống" },
+      { "name": "STAFF", "description": "Nhân viên vận hành" },
+      { "name": "CUSTOMER", "description": "Khách hàng" }
+    ]
+  },
+  "defaultRoles": ["CUSTOMER", "offline_access", "uma_authorization"],
+  "clients": [
+    {
+      "clientId": "fashion-frontend",
+      "name": "Fashion Shop Frontend (Next.js)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "cc50185891395aae5def1f21bde4a3ee7845157b849d1363",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "defaultClientScopes": ["basic", "web-origins", "acr", "roles", "profile", "email"],
+      "protocolMappers": [
+        {
+          "name": "audience-fashion-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "fashion-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "google",
+      "displayName": "Google",
+      "providerId": "google",
+      "enabled": true,
+      "trustEmail": true,
+      "storeToken": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "CHANGE_ME_GOOGLE_CLIENT_ID",
+        "clientSecret": "CHANGE_ME_GOOGLE_CLIENT_SECRET",
+        "defaultScope": "openid email profile",
+        "syncMode": "IMPORT"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@fashion.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Quản",
+      "lastName": "Trị",
+      "credentials": [
+        { "type": "password", "value": "Admin@123", "temporary": false }
+      ],
+      "realmRoles": ["ADMIN", "STAFF", "CUSTOMER"]
+    },
+    {
+      "username": "nhanvien",
+      "email": "nhanvien@fashion.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Nhân",
+      "lastName": "Viên",
+      "credentials": [
+        { "type": "password", "value": "Staff@123", "temporary": false }
+      ],
+      "realmRoles": ["STAFF"]
+    },
+    {
+      "username": "khach",
+      "email": "khach@fashion.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Khách",
+      "lastName": "Hàng",
+      "credentials": [
+        { "type": "password", "value": "Khach@123", "temporary": false }
+      ],
+      "realmRoles": ["CUSTOMER"]
+    }
+  ]
+}

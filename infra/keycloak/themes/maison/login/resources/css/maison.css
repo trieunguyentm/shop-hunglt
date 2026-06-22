@@ -1,0 +1,229 @@
+/* MAISON — Editorial login theme. Phủ lên keycloak.v2 (PatternFly v5). */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --m-ivory: #f7f4ef;
+  --m-bone: #efeae2;
+  --m-ink: #1a1714;
+  --m-graphite: #4a463f;
+  --m-mist: #8c857a;
+  --m-line: #e2dbd0;
+  --m-clay: #b25c3c;
+}
+
+/* Nền + font tổng thể, bỏ ảnh nền polygon tối mặc định.
+   Lưu ý: class .login-pf nằm trên <html>, nền tối được set ở ".login-pf body". */
+html.login-pf,
+html.login-pf body,
+body#keycloak-bg,
+.login-pf body,
+body,
+.login-pf-page {
+  background: var(--m-ivory) !important;
+  background-image: none !important;
+  background-color: var(--m-ivory) !important;
+  color: var(--m-ink) !important;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+/* Layout PatternFly login: .pf-v5-c-login là flex hướng row, căn dọc do align-items.
+   Đổi align-items sang flex-start để form lên gần đầu (giữ justify-content:center cho căn ngang). */
+.pf-v5-c-login {
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding-block-start: 4rem !important;
+  --pf-v5-c-login--PaddingTop: 4rem !important;
+}
+.login-pf-page {
+  padding: 0 !important;
+}
+
+/* Tên thương hiệu (header) */
+#kc-header,
+#kc-header-wrapper {
+  color: var(--m-ink) !important;
+  font-family: 'Fraunces', Georgia, serif !important;
+  font-size: 2rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: none !important;
+  padding: 1.25rem 0 2rem !important;
+}
+
+/* Thẻ đăng nhập */
+.card-pf,
+.login-pf-page .card-pf,
+.pf-v5-c-login__main,
+.pf-v5-c-card {
+  background: #ffffff !important;
+  border: 1px solid var(--m-line) !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 24px 60px -32px rgba(26, 23, 20, 0.28) !important;
+  padding: 2.25rem !important;
+}
+
+/* Tiêu đề "Đăng nhập" */
+#kc-page-title {
+  font-family: 'Fraunces', Georgia, serif !important;
+  font-weight: 500 !important;
+  font-size: 1.9rem !important;
+  color: var(--m-ink) !important;
+}
+
+/* Nhãn input */
+label,
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text {
+  color: var(--m-graphite) !important;
+  font-weight: 500 !important;
+}
+
+/* Ô nhập (PatternFly v5 bọc input trong .pf-v5-c-form-control) */
+.pf-v5-c-form-control,
+input[type='text'],
+input[type='password'],
+input[type='email'] {
+  background: var(--m-ivory) !important;
+  border: 1px solid var(--m-line) !important;
+  border-radius: 0.65rem !important;
+  color: var(--m-ink) !important;
+  box-shadow: none !important;
+  min-height: 3rem !important;
+  --pf-v5-c-form-control--BorderColor: var(--m-line) !important;
+  --pf-v5-c-form-control--BorderBottomColor: var(--m-line) !important;
+  --pf-v5-c-form-control--focus--BorderBottomColor: var(--m-ink) !important;
+}
+.pf-v5-c-form-control > input {
+  background: transparent !important;
+  border: none !important;
+  min-height: auto !important;
+  padding: 0.7rem 0.9rem !important;
+}
+.pf-v5-c-form-control:focus-within,
+input:focus {
+  border-color: var(--m-ink) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Nhóm input có nút (mật khẩu + biểu tượng con mắt) — gộp thành 1 khối liền mạch */
+.pf-v5-c-input-group {
+  background: var(--m-ivory) !important;
+  border: 1px solid var(--m-line) !important;
+  border-radius: 0.65rem !important;
+  overflow: hidden;
+}
+.pf-v5-c-input-group:focus-within {
+  border-color: var(--m-ink) !important;
+}
+.pf-v5-c-input-group .pf-v5-c-form-control,
+.pf-v5-c-input-group input {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+/* Nút con mắt: bỏ viền/nền hộp (PatternFly vẽ viền bằng ::after) */
+.pf-v5-c-input-group .pf-v5-c-button,
+.pf-v5-c-button.pf-m-control {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--m-mist) !important;
+  padding: 0 0.9rem !important;
+}
+.pf-v5-c-input-group .pf-v5-c-button::after,
+.pf-v5-c-button.pf-m-control::after {
+  border: 0 !important;
+  --pf-v5-c-button--after--BorderWidth: 0 !important;
+}
+.pf-v5-c-input-group .pf-v5-c-button:hover,
+.pf-v5-c-button.pf-m-control:hover {
+  color: var(--m-ink) !important;
+  background: transparent !important;
+}
+
+/* Nút chính (Sign In) */
+input[type='submit'],
+button[type='submit'],
+#kc-login,
+.pf-v5-c-button.pf-m-primary {
+  background: var(--m-ink) !important;
+  border: none !important;
+  color: var(--m-ivory) !important;
+  border-radius: 999px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+  padding: 0.85rem 1.5rem !important;
+  transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+input[type='submit']:hover,
+button[type='submit']:hover,
+#kc-login:hover,
+.pf-v5-c-button.pf-m-primary:hover {
+  background: var(--m-clay) !important;
+}
+
+/* Liên kết */
+a,
+.pf-v5-c-button.pf-m-link {
+  color: var(--m-clay) !important;
+}
+a:hover {
+  color: var(--m-ink) !important;
+}
+
+/* Đường kẻ / khối social */
+hr,
+.pf-v5-c-divider {
+  border-color: var(--m-line) !important;
+  background: var(--m-line) !important;
+}
+
+/* Khối "Or sign in with" + nút social (Google) */
+#kc-social-providers {
+  margin-top: 1.25rem;
+}
+.pf-v5-c-login__main-footer-links {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 0.75rem !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+.pf-v5-c-login__main-footer-links-item {
+  width: auto !important;
+}
+/* Nút social: hình tròn 48px, icon ở giữa, viền nhã */
+.pf-v5-c-login__main-footer-links-item-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 3rem !important;
+  height: 3rem !important;
+  padding: 0 !important;
+  border: 1px solid var(--m-line) !important;
+  border-radius: 999px !important;
+  color: var(--m-graphite) !important;
+  background: #fff !important;
+  transition: border-color 0.25s ease, transform 0.25s ease !important;
+}
+.pf-v5-c-login__main-footer-links-item-link:hover {
+  border-color: var(--m-ink) !important;
+  transform: translateY(-1px);
+}
+.pf-v5-c-login__main-footer-links-item-link svg {
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+}
+
+/* Cảnh báo / lỗi giữ tông đất nung thay vì đỏ chói */
+.pf-v5-c-alert.pf-m-danger,
+.alert-error {
+  border-color: var(--m-clay) !important;
+}
+
+/* Ẩn bộ chọn ngôn ngữ (chỉ dùng tiếng Việt) */
+#kc-locale,
+.pf-v5-c-login__main-header-utilities,
+div.pf-v5-c-dropdown#kc-locale-dropdown {
+  display: none !important;
+}

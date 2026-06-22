@@ -1,0 +1,38 @@
+# ===== Dependencies =====
+node_modules/
+
+# ===== Build outputs =====
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# ===== Env & secrets (giữ lại *.example) =====
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# ===== Logs =====
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== Prisma (DB cục bộ) =====
+*.db
+*.db-journal
+
+# ===== Test coverage =====
+coverage/
+
+# ===== Next.js typegen (tự sinh) =====
+next-env.d.ts
+
+# ===== Hệ điều hành / editor =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

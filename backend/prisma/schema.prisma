@@ -1,0 +1,422 @@
+// =============================================================================
+// Prisma schema — Hệ thống quản lý bán hàng thời trang (Fashion Shop)
+// Mapping tên thực thể: xem bảng "Ánh xạ thực thể" trong /CLAUDE.md
+// DB: PostgreSQL. Mỗi @@map ghi rõ tên bảng tiếng Việt tương ứng ERD cũ.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+enum RoleName {
+  ADMIN // Quản trị viên
+  STAFF // Nhân viên
+  CUSTOMER // Khách hàng
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum CustomerTier {
+  REGULAR // Khách thường
+  VIP // Khách VIP
+}
+
+enum ProductStatus {
+  ACTIVE // Đang bán
+  HIDDEN // Ẩn
+  OUT_OF_STOCK // Hết hàng
+}
+
+enum OrderStatus {
+  PENDING // Chờ xác nhận
+  CONFIRMED // Đã xác nhận
+  PACKING // Đang đóng gói
+  SHIPPING // Đang giao
+  DELIVERED // Đã giao
+  CANCELLED // Đã hủy
+  RETURNED // Trả hàng
+}
+
+enum PaymentMethod {
+  COD // Thanh toán khi nhận hàng
+  PAYOS // Cổng thanh toán PayOS (QR/chuyển khoản online)
+  BANK_TRANSFER // Chuyển khoản
+  MOMO
+  VNPAY
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum DiscountType {
+  PERCENT // Giảm theo %
+  FIXED // Giảm số tiền cố định
+}
+
+enum ContactStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+
+// ---------------------------------------------------------------------------
+// Tài khoản & phân quyền
+// ---------------------------------------------------------------------------
+/// PHANQUYEN — Vai trò / nhóm quyền
+model Role {
+  id          String    @id @default(cuid())
+  name        RoleName  @unique
+  description String?
+  accounts    Account[]
+
+  @@map("roles")
+}
+
+/// TAIKHOAN — Bản sao (mirror) tài khoản từ Keycloak. Credential do Keycloak quản lý.
+/// keycloakId = "sub" trong access token. Đồng bộ khi gọi /auth/me hoặc qua Admin API.
+model Account {
+  id         String        @id @default(cuid())
+  keycloakId String        @unique // sub của user trong Keycloak
+  username   String        @unique
+  email      String        @unique
+  status     AccountStatus @default(ACTIVE)
+  roleId     String
+  role       Role          @relation(fields: [roleId], references: [id])
+  customer   Customer?
+  // Audit cho các nghiệp vụ do nhân viên/admin thực hiện
+  ordersHandled Order[]        @relation("OrderHandledBy")
+  stockReceipts StockReceipt[] @relation("ReceiptCreatedBy")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("accounts")
+}
+
+// ---------------------------------------------------------------------------
+// Khách hàng
+// ---------------------------------------------------------------------------
+/// KHACHHANG — Hồ sơ khách hàng (1-1 với Account có role CUSTOMER)
+model Customer {
+  id        String       @id @default(cuid())
+  accountId String       @unique
+  account   Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  fullName  String
+  gender    Gender?
+  birthday  DateTime?
+  phone     String?
+  address   String?
+  tier      CustomerTier @default(REGULAR)
+  orders    Order[]
+  cart      Cart?
+  reviews   Review[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@map("customers")
+}
+
+// ---------------------------------------------------------------------------
+// Danh mục & nhà cung cấp & sản phẩm
+// ---------------------------------------------------------------------------
+/// LOAISANPHAM — Danh mục sản phẩm (tự tham chiếu cha-con)
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  products    Product[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("categories")
+}
+
+/// NHACUNGCAP — Nhà cung cấp
+model Supplier {
+  id            String         @id @default(cuid())
+  name          String
+  address       String?
+  phone         String?
+  email         String?
+  taxCode       String?
+  contactPerson String?
+  products      Product[]
+  stockReceipts StockReceipt[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("suppliers")
+}
+
+/// SANPHAM — Sản phẩm thời trang
+model Product {
+  id          String         @id @default(cuid())
+  sku         String         @unique
+  name        String
+  slug        String         @unique
+  description String?
+  salePrice   Decimal        @db.Decimal(12, 2) // GiaBan
+  costPrice   Decimal        @db.Decimal(12, 2) // GiaNhap
+  stock       Int            @default(0) // SoLuongTon (tổng — chi tiết theo biến thể ở ProductVariant)
+  material    String? // ChatLieu
+  status      ProductStatus  @default(ACTIVE)
+  categoryId  String
+  category    Category       @relation(fields: [categoryId], references: [id])
+  supplierId  String?
+  supplier    Supplier?      @relation(fields: [supplierId], references: [id])
+  images      ProductImage[]
+  variants    ProductVariant[]
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  reviews     Review[]
+  receiptItems StockReceiptItem[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([categoryId])
+  @@map("products")
+}
+
+/// Ảnh sản phẩm (1 sản phẩm nhiều ảnh)
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  isPrimary Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+/// Biến thể sản phẩm theo Size + Màu (KichCo + MauSac) — chuẩn cho thời trang
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String // VD: S, M, L, XL, 38, 39...
+  color     String
+  stock     Int     @default(0)
+  // Giá chênh lệch so với salePrice (nếu biến thể có giá khác)
+  priceDelta Decimal @default(0) @db.Decimal(12, 2)
+
+  @@unique([productId, size, color])
+  @@map("product_variants")
+}
+
+// ---------------------------------------------------------------------------
+// Giỏ hàng
+// ---------------------------------------------------------------------------
+/// GIOHANG — Giỏ hàng (1-1 với khách hàng)
+model Cart {
+  id         String     @id @default(cuid())
+  customerId String     @unique
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items      CartItem[]
+  updatedAt  DateTime   @updatedAt
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  size      String?
+  color     String?
+  quantity  Int     @default(1)
+  addedAt   DateTime @default(now())
+
+  @@unique([cartId, productId, size, color])
+  @@map("cart_items")
+}
+
+// ---------------------------------------------------------------------------
+// Khuyến mãi
+// ---------------------------------------------------------------------------
+/// KHUYENMAI — Mã khuyến mãi
+model Promotion {
+  id          String       @id @default(cuid())
+  name        String
+  code        String       @unique
+  discountType DiscountType
+  discountValue Decimal     @db.Decimal(12, 2) // % hoặc số tiền tùy discountType
+  minOrderTotal Decimal     @default(0) @db.Decimal(12, 2)
+  startDate   DateTime
+  endDate     DateTime
+  quantityLeft Int         @default(0)
+  isActive    Boolean      @default(true)
+  orders      Order[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("promotions")
+}
+
+// ---------------------------------------------------------------------------
+// Đơn hàng & thanh toán
+// ---------------------------------------------------------------------------
+/// DONHANG — Đơn hàng
+model Order {
+  id           String        @id @default(cuid())
+  code         String        @unique // Mã đơn hiển thị, VD: DH-20260619-0001
+  customerId   String
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  handledById  String? // Nhân viên/Admin xử lý (MaNV)
+  handledBy    Account?      @relation("OrderHandledBy", fields: [handledById], references: [id])
+  promotionId  String?
+  promotion    Promotion?    @relation(fields: [promotionId], references: [id])
+  status       OrderStatus   @default(PENDING)
+  // Thông tin giao hàng
+  receiverName String
+  receiverPhone String
+  shippingAddress String
+  shippingMethod String?
+  shippingFee  Decimal       @default(0) @db.Decimal(12, 2)
+  // Tiền
+  subtotal     Decimal       @db.Decimal(12, 2) // tổng tiền hàng trước giảm
+  discount     Decimal       @default(0) @db.Decimal(12, 2)
+  total        Decimal       @db.Decimal(12, 2) // subtotal - discount + shippingFee
+  note         String?
+  orderedAt    DateTime      @default(now())
+  deliveredAt  DateTime?
+  items        OrderItem[]
+  payment      Payment?
+  reviews      Review[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("orders")
+}
+
+/// CHITIETDONHANG — Chi tiết đơn hàng (snapshot giá tại thời điểm mua)
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  productName String // snapshot tên sản phẩm
+  size       String?
+  color      String?
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(12, 2) // DonGia snapshot
+  lineTotal  Decimal @db.Decimal(12, 2) // ThanhTien = unitPrice * quantity
+
+  @@map("order_items")
+}
+
+/// THANHTOAN — Thanh toán (1-1 với đơn hàng)
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method        PaymentMethod
+  status        PaymentStatus @default(UNPAID)
+  amount        Decimal       @db.Decimal(12, 2)
+  transactionId String? // mã giao dịch / reference từ cổng thanh toán
+  payosOrderCode Int?         @unique // orderCode dạng số gửi sang PayOS (map webhook → đơn)
+  checkoutUrl   String? // link thanh toán PayOS
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Kho — phiếu nhập
+// ---------------------------------------------------------------------------
+/// PHIEUNHAPKHO — Phiếu nhập kho
+model StockReceipt {
+  id          String             @id @default(cuid())
+  code        String             @unique
+  supplierId  String
+  supplier    Supplier           @relation(fields: [supplierId], references: [id])
+  createdById String
+  createdBy   Account            @relation("ReceiptCreatedBy", fields: [createdById], references: [id])
+  total       Decimal            @db.Decimal(12, 2)
+  note        String?
+  receivedAt  DateTime           @default(now())
+  items       StockReceiptItem[]
+
+  @@map("stock_receipts")
+}
+
+/// CHITIETPHIEUNHAP — Chi tiết phiếu nhập
+model StockReceiptItem {
+  id         String       @id @default(cuid())
+  receiptId  String
+  receipt    StockReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product      @relation(fields: [productId], references: [id])
+  size       String? // nhập theo biến thể (nếu có)
+  color      String?
+  quantity   Int
+  costPrice  Decimal      @db.Decimal(12, 2) // DonGiaNhap
+  lineTotal  Decimal      @db.Decimal(12, 2)
+
+  @@map("stock_receipt_items")
+}
+
+// ---------------------------------------------------------------------------
+// Đánh giá & liên hệ
+// ---------------------------------------------------------------------------
+/// DANHGIA — Đánh giá sản phẩm (chỉ khách đã mua mới đánh giá)
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  orderId    String?
+  order      Order?   @relation(fields: [orderId], references: [id])
+  rating     Int // 1..5 sao
+  content    String?
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+  @@map("reviews")
+}
+
+/// LIENHE — Tin nhắn liên hệ từ khách
+model ContactMessage {
+  id        String        @id @default(cuid())
+  fullName  String
+  email     String
+  phone     String?
+  subject   String
+  content   String
+  status    ContactStatus @default(NEW)
+  createdAt DateTime      @default(now())
+
+  @@map("contact_messages")
+}
