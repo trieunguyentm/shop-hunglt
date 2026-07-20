@@ -1,12 +1,22 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { federatedSignOut } from '@/lib/logout';
 
 export function SignOutButton() {
+  const [busy, setBusy] = useState(false);
+
   return (
-    <Button variant="outline" onClick={() => signOut({ callbackUrl: '/' })}>
-      Đăng xuất
+    <Button
+      variant="outline"
+      disabled={busy}
+      onClick={() => {
+        setBusy(true);
+        void federatedSignOut();
+      }}
+    >
+      {busy ? 'Đang đăng xuất…' : 'Đăng xuất'}
     </Button>
   );
 }

@@ -95,8 +95,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
+        token.idToken = account.id_token; // dùng cho đăng xuất liên kết (id_token_hint)
         token.expiresAt = account.expires_at; // giây (epoch)
         token.roles = decodeRoles(account.access_token);
+        delete token.error;
         return token;
       }
 
@@ -106,20 +108,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return token;
       }
 
-      // Hết hạn → làm mới
+      // Hết hạn → làm mới. Nếu thất bại (hoặc không còn refresh token) thì coi như
+      // phiên đã chết: XOÁ hẳn access token để không nơi nào gọi API bằng token chết,
+      // và gắn cờ lỗi để middleware/UI điều hướng về trang đăng nhập.
+      const refreshToken = token.refreshToken as string | undefined;
+      if (!refreshToken) {
+        token.error = 'RefreshAccessTokenError';
+        delete token.accessToken;
+        return token;
+      }
       try {
-        const refreshed = await refreshAccessToken(token.refreshToken as string);
+        const refreshed = await refreshAccessToken(refreshToken);
         token.accessToken = refreshed.access_token;
         token.expiresAt = Math.floor(Date.now() / 1000) + refreshed.expires_in;
         if (refreshed.refresh_token) token.refreshToken = refreshed.refresh_token;
         token.roles = decodeRoles(refreshed.access_token);
+        delete token.error;
       } catch {
         token.error = 'RefreshAccessTokenError';
+        delete token.accessToken;
+        delete token.refreshToken;
       }
       return token;
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken as string | undefined;
+      // Khi phiên đã chết, không phát access token ra ngoài nữa.
+      session.accessToken = token.error ? undefined : (token.accessToken as string | undefined);
       session.roles = (token.roles as string[] | undefined) ?? [];
       session.error = token.error as string | undefined;
       return session;

@@ -15,10 +15,26 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [error, setError] = useState('');
+
   useEffect(() => {
-    if (!token) return;
+    // Chưa có token (đang khôi phục phiên hoặc phiên đã hết) → không kẹt "Đang tải".
+    // SessionGuard sẽ điều hướng về /login nếu phiên thực sự đã chết.
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     getMyOrders(token)
-      .then((r) => setOrders(r.data))
+      .then((r) => {
+        setOrders(r.data);
+        setError('');
+      })
+      .catch((e: unknown) => {
+        // Không nuốt lỗi: nếu không có .catch, 401 sẽ thành unhandled rejection và
+        // giao diện hiển thị nhầm "Bạn chưa có đơn hàng nào".
+        setError(e instanceof Error ? e.message : 'Không tải được đơn hàng');
+      })
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -28,6 +44,10 @@ export default function OrdersPage() {
 
       {loading ? (
         <p className="text-mist">Đang tải...</p>
+      ) : error ? (
+        <p className="rounded-xl2 border border-dashed border-line bg-bone p-6 text-sm text-mist">
+          {error}
+        </p>
       ) : orders.length === 0 ? (
         <div className="rounded-xl2 border border-dashed border-line bg-bone p-12 text-center">
           <p className="mb-6 text-mist">Bạn chưa có đơn hàng nào.</p>

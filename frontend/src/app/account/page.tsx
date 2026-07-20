@@ -1,22 +1,41 @@
+import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getMe } from '@/lib/api';
+import { ApiError, getMe } from '@/lib/api';
 import { SignOutButton } from '@/components/account/SignOutButton';
 import type { AuthUser } from '@/lib/types';
 
 export const metadata = { title: 'Tài khoản — MAISON' };
 
+const LOGIN_EXPIRED = '/login?callbackUrl=%2Faccount&reason=session_expired';
+
 // Server Component — middleware đã đảm bảo người dùng đã đăng nhập.
 export default async function AccountPage() {
   const session = await auth();
+
+  // Lớp bảo vệ thứ hai: phiên hỏng/hết hạn → về trang đăng nhập, không hiển thị lỗi thô.
+  if (!session?.accessToken || session.error) {
+    redirect(LOGIN_EXPIRED);
+  }
+
   let profile: AuthUser | null = null;
   let error: string | null = null;
+  let expired = false;
 
-  if (session?.accessToken) {
-    try {
-      profile = (await getMe(session.accessToken)).data;
-    } catch (e) {
+  try {
+    profile = (await getMe(session.accessToken)).data;
+  } catch (e) {
+    // Token bị Keycloak thu hồi giữa chừng → coi như hết phiên.
+    if (e instanceof ApiError && (e.isUnauthorized || e.isForbidden)) {
+      expired = true;
+    } else {
       error = e instanceof Error ? e.message : 'Không tải được hồ sơ';
     }
+  }
+
+  // Gọi redirect() NGOÀI try/catch: nó hoạt động bằng cách ném NEXT_REDIRECT,
+  // nếu đặt bên trong sẽ bị chính khối catch nuốt mất.
+  if (expired) {
+    redirect(LOGIN_EXPIRED);
   }
 
   return (
@@ -25,9 +44,12 @@ export default async function AccountPage() {
       <h1 className="mb-10 text-display-md">Tài khoản của tôi</h1>
 
       {error && (
-        <p className="rounded-xl2 border border-dashed border-line bg-bone p-6 text-sm text-mist">
-          {error}. Đảm bảo backend đang chạy.
-        </p>
+        <div className="rounded-xl2 border border-dashed border-line bg-bone p-6">
+          <p className="text-sm text-mist">{error}</p>
+          <div className="mt-4">
+            <SignOutButton />
+          </div>
+        </div>
       )}
 
       {profile && (

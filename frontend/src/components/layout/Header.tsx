@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { signIn, signOut, useSession } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
+import { federatedSignOut } from '@/lib/logout';
 import { LogOut, Menu, Search, ShoppingBag, User, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCartStore } from '@/lib/stores/cart';
@@ -85,7 +86,7 @@ export function Header() {
               <Link href="/account" aria-label="Tài khoản" className="transition-colors hover:text-clay" title={session?.user?.name ?? 'Tài khoản'}>
                 <User size={19} strokeWidth={1.5} />
               </Link>
-              <button aria-label="Đăng xuất" onClick={() => signOut({ callbackUrl: '/' })} className="hidden transition-colors hover:text-clay sm:block">
+              <button aria-label="Đăng xuất" onClick={() => void federatedSignOut()} className="hidden transition-colors hover:text-clay sm:block">
                 <LogOut size={19} strokeWidth={1.5} />
               </button>
             </>
@@ -134,7 +135,7 @@ export function Header() {
           )}
           {isAuthed && (
             <li>
-              <button onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/' }); }} className="py-2 text-base text-graphite hover:text-ink">
+              <button onClick={() => { setMobileOpen(false); void federatedSignOut(); }} className="py-2 text-base text-graphite hover:text-ink">
                 Đăng xuất
               </button>
             </li>
