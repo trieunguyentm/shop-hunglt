@@ -19,12 +19,19 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!token) return;
+    // Chưa có token → thoát trạng thái tải để không kẹt "Đang tải" vĩnh viễn.
+    // SessionGuard chịu trách nhiệm điều hướng về /login nếu phiên đã chết.
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const r = await getCart(token);
       setCart(r.data);
       setCartStore(r.data);
+    } catch {
+      setCart(null);
     } finally {
       setLoading(false);
     }

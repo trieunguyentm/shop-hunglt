@@ -11,28 +11,81 @@ interface RequestOptions extends RequestInit {
 }
 
 /**
+ * Lỗi API có mang mã HTTP để nơi gọi phân biệt được 401/403 (hết phiên, không đủ quyền)
+ * với các lỗi nghiệp vụ khác — nhờ đó điều hướng về /login thay vì hiển thị lỗi thô.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+
+  /** Hết phiên / token không hợp lệ → cần đăng nhập lại. */
+  get isUnauthorized() {
+    return this.status === 401;
+  }
+
+  /** Đã đăng nhập nhưng không đủ quyền. */
+  get isForbidden() {
+    return this.status === 403;
+  }
+
+  /** Không kết nối được backend (status 0). */
+  get isNetworkError() {
+    return this.status === 0;
+  }
+}
+
+/**
  * Fetch wrapper dùng chung cho mọi lời gọi API.
  * - Tự gắn JSON header & Bearer token.
- * - Ném Error với message từ backend khi response không thành công.
+ * - Ném ApiError (kèm status) khi response không thành công.
  */
 export async function apiFetch<T>(
   path: string,
   { token, headers, ...options }: RequestOptions = {},
 ): Promise<ApiResponse<T>> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    // Cho phép tận dụng cache mặc định của Next; ghi đè bằng options.cache khi cần
-    cache: options.cache ?? 'no-store',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      // Cho phép tận dụng cache mặc định của Next; ghi đè bằng options.cache khi cần
+      cache: options.cache ?? 'no-store',
+    });
+  } catch {
+    // fetch chỉ ném khi lỗi mạng/DNS/backend không chạy
+    throw new ApiError('Không kết nối được máy chủ. Vui lòng thử lại.', 0);
+  }
 
-  const json = (await res.json()) as ApiResponse<T>;
-  if (!res.ok || !json.success) {
-    throw new Error(json.error?.message ?? `Lỗi API (${res.status})`);
+  // Backend có thể trả rỗng (204) hoặc HTML (lỗi proxy 502) → không được để JSON.parse ném lỗi khó hiểu
+  const raw = await res.text();
+  let json: ApiResponse<T> | null = null;
+  if (raw) {
+    try {
+      json = JSON.parse(raw) as ApiResponse<T>;
+    } catch {
+      json = null;
+    }
+  }
+
+  if (!res.ok || !json?.success) {
+    const fallback =
+      res.status === 401
+        ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+        : res.status === 403
+          ? 'Bạn không có quyền thực hiện thao tác này.'
+          : `Lỗi API (${res.status})`;
+    throw new ApiError(json?.error?.message ?? fallback, res.status);
   }
   return json;
 }
