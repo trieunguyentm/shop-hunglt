@@ -1,7 +1,13 @@
+# Không đưa thư viện/bản build của máy host vào image (binary native khác hệ điều hành)
 node_modules
+.next
 dist
+coverage
+*.tsbuildinfo
+npm-debug.log*
+# Secret không nằm trong image — nạp lúc chạy qua env_file
 .env
 .env.*
-npm-debug.log
-.git
+!.env.example
+!.env.*.example
 .DS_Store

@@ -154,15 +154,19 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
 export async function deleteProduct(id: string) {
   const existing = await prisma.product.findUnique({
     where: { id },
-    include: { _count: { select: { orderItems: true } } },
+    include: { _count: { select: { orderItems: true, receiptItems: true } } },
   });
   if (!existing) throw AppError.notFound('Không tìm thấy sản phẩm');
-  if (existing._count.orderItems > 0) {
-    // Đã phát sinh đơn hàng — ẩn thay vì xóa để giữ toàn vẹn dữ liệu
+  if (existing._count.orderItems > 0 || existing._count.receiptItems > 0) {
+    // Đã phát sinh đơn hàng / phiếu nhập — ẩn thay vì xóa để giữ lịch sử chứng từ
     await prisma.product.update({ where: { id }, data: { status: 'HIDDEN' } });
     return { id, hidden: true };
   }
-  await prisma.product.delete({ where: { id } });
+  // Gỡ khỏi giỏ hàng của khách trước (cart_items không cascade) rồi mới xóa
+  await prisma.$transaction([
+    prisma.cartItem.deleteMany({ where: { productId: id } }),
+    prisma.product.delete({ where: { id } }),
+  ]);
   return { id, deleted: true };
 }
 

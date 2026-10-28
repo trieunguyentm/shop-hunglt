@@ -18,10 +18,10 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
     pageSize: number;
   };
   const result = await reviewService.listReviews(productId, page, pageSize);
-  return sendSuccess(res, result.items, 200, result.meta);
+  return sendSuccess(res, result.items, 200, { ...result.meta, average: result.average });
 });
 
-// Public-ish: trả average riêng (dùng kèm list)
+// Khách đã mua & nhận hàng mới được đánh giá
 export const eligibility = asyncHandler(async (req: Request, res: Response) => {
   const cid = await customerId(req);
   const data = await reviewService.checkEligibility(cid, req.query.productId as string);

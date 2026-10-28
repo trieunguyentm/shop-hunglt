@@ -8,6 +8,8 @@ export interface ApiMeta {
   pageSize?: number;
   total?: number;
   totalPages?: number;
+  /** Điểm trung bình (danh sách đánh giá). */
+  average?: number;
 }
 
 export function sendSuccess<T>(

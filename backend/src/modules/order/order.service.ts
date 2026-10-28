@@ -5,6 +5,7 @@ import { env } from '../../config/env';
 import * as payos from '../../services/payos';
 import { assertPromotionUsable, computeDiscount } from '../promotion/promotion.service';
 import type { CreateOrderInput, ListOrdersQuery } from './order.schema';
+import { ORDER_STATUS_LABEL_VI, SHIPPING_FEE, canTransition, shouldRestock } from './order.rules';
 
 const orderInclude = {
   items: true,
@@ -106,7 +107,7 @@ export async function createOrder(
       });
     }
 
-    const total = subtotal - discount + input.shippingFee;
+    const total = subtotal - discount + SHIPPING_FEE;
 
     const created = await tx.order.create({
       data: {
@@ -118,7 +119,7 @@ export async function createOrder(
         receiverPhone: input.receiverPhone,
         shippingAddress: input.shippingAddress,
         shippingMethod: input.shippingMethod,
-        shippingFee: input.shippingFee,
+        shippingFee: SHIPPING_FEE,
         subtotal,
         discount,
         total,
@@ -242,10 +243,26 @@ export async function updateStatus(orderId: string, status: OrderStatus) {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) throw AppError.notFound('Không tìm thấy đơn hàng');
 
+  if (order.status === status) {
+    return prisma.order.findUniqueOrThrow({ where: { id: orderId }, include: orderInclude });
+  }
+  if (!canTransition(order.status, status)) {
+    throw AppError.badRequest(
+      `Không thể chuyển đơn từ "${ORDER_STATUS_LABEL_VI[order.status]}" sang "${ORDER_STATUS_LABEL_VI[status]}"`,
+    );
+  }
+
   return prisma.$transaction(async (tx) => {
-    // Chuyển sang CANCELLED từ trạng thái chưa hủy → hoàn tồn kho
-    if (status === 'CANCELLED' && order.status !== 'CANCELLED') {
+    // Hủy / trả hàng → hoàn tồn kho
+    if (shouldRestock(status)) {
       await restock(tx, orderId);
+    }
+    // COD: giao thành công đồng nghĩa đã thu tiền → ghi nhận thanh toán
+    if (status === 'DELIVERED') {
+      await tx.payment.updateMany({
+        where: { orderId, method: 'COD', status: 'UNPAID' },
+        data: { status: 'PAID', paidAt: new Date() },
+      });
     }
     return tx.order.update({
       where: { id: orderId },

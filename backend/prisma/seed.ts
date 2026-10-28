@@ -14,6 +14,42 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
+// Ảnh sản phẩm thật (Unsplash — miễn phí sử dụng), theo slug sản phẩm
+const PRODUCT_IMAGES: Record<string, [string, string]> = {
+  'ao-thun-cotton-oversize': [
+    'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1622445275463-afa2ab738c34?auto=format&fit=crop&w=900&q=80'
+  ],
+  'so-mi-linen-tay-dai': [
+    'https://images.unsplash.com/photo-1752825609278-f9696bc9d7bd?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1740711152088-88a009e877bb?auto=format&fit=crop&w=900&q=80'
+  ],
+  'quan-jean-slim-fit': [
+    'https://images.unsplash.com/photo-1475178626620-a4d074967452?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1604176354204-9268737828e4?auto=format&fit=crop&w=900&q=80'
+  ],
+  'quan-short-kaki': [
+    'https://images.unsplash.com/photo-1697319452360-ee47502e39f6?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1771711286856-765bdbca923f?auto=format&fit=crop&crop=top&w=900&h=760&q=80'
+  ],
+  'dam-suong-toi-gian': [
+    'https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1591369822096-ffd140ec948f?auto=format&fit=crop&w=900&q=80'
+  ],
+  'chan-vay-xep-ly': [
+    'https://images.unsplash.com/photo-1577900232427-18219b9166a0?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=900&q=80'
+  ],
+  'tui-tote-canvas': [
+    'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1535981444082-2a5dc0548ef3?auto=format&fit=crop&w=900&q=80'
+  ],
+  'that-lung-da-bo': [
+    'https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1752386296085-fd15d8b46ee7?auto=format&fit=crop&w=900&q=80'
+  ],
+};
+
 function slugify(input: string): string {
   return input
     .normalize('NFD')
@@ -119,13 +155,13 @@ async function main() {
         images: {
           create: [
             {
-              url: `https://picsum.photos/seed/${slug}/800/1000`,
+              url: PRODUCT_IMAGES[slug]?.[0] ?? `https://picsum.photos/seed/${slug}/800/1000`,
               alt: p.name,
               isPrimary: true,
               sortOrder: 0,
             },
             {
-              url: `https://picsum.photos/seed/${slug}-2/800/1000`,
+              url: PRODUCT_IMAGES[slug]?.[1] ?? `https://picsum.photos/seed/${slug}-2/800/1000`,
               alt: `${p.name} - góc khác`,
               sortOrder: 1,
             },
@@ -138,7 +174,19 @@ async function main() {
         },
       },
     });
-    void product;
+    // DB seed từ bản cũ còn ảnh picsum (ảnh ngẫu nhiên) → thay bằng ảnh sản phẩm thật
+    const imgs = PRODUCT_IMAGES[slug];
+    if (imgs) {
+      const old = await prisma.productImage.findMany({
+        where: { productId: product.id },
+        orderBy: { sortOrder: 'asc' },
+      });
+      for (const [idx, img] of old.entries()) {
+        if (img.url.includes('picsum.photos') && imgs[idx]) {
+          await prisma.productImage.update({ where: { id: img.id }, data: { url: imgs[idx] } });
+        }
+      }
+    }
   }
 
   // 6) Khuyến mãi mẫu

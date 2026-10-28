@@ -6,7 +6,8 @@ export const createOrderSchema = z.object({
     receiverPhone: z.string().min(8, 'Số điện thoại không hợp lệ'),
     shippingAddress: z.string().min(5, 'Nhập địa chỉ giao hàng'),
     shippingMethod: z.string().optional(),
-    shippingFee: z.number().min(0).default(0),
+    // Giữ để tương thích client cũ — server bỏ qua, luôn dùng SHIPPING_FEE (order.rules.ts)
+    shippingFee: z.number().min(0).optional(),
     paymentMethod: z.enum(['COD', 'PAYOS']).default('COD'),
     promotionCode: z.string().optional(),
     note: z.string().max(500).optional(),

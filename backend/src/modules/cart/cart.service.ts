@@ -21,14 +21,38 @@ async function getOrCreateCart(customerId: string) {
   return prisma.cart.create({ data: { customerId } });
 }
 
-/** Lấy giỏ hàng kèm chi tiết + tổng tiền tạm tính. */
+/**
+ * Tồn kho khả dụng của 1 lựa chọn: theo biến thể (size+màu) nếu sản phẩm có biến thể,
+ * ngược lại theo tồn tổng của sản phẩm.
+ */
+async function availableStock(productId: string, size?: string | null, color?: string | null) {
+  const variants = await prisma.productVariant.findMany({ where: { productId } });
+  if (variants.length === 0) {
+    const p = await prisma.product.findUnique({ where: { id: productId }, select: { stock: true } });
+    return p?.stock ?? 0;
+  }
+  const v = variants.find((x) => x.size === (size ?? '') && x.color === (color ?? ''));
+  return v?.stock ?? 0;
+}
+
+function assertEnough(quantity: number, available: number) {
+  if (available <= 0) throw AppError.badRequest('Phân loại này đã hết hàng');
+  if (quantity > available) {
+    throw AppError.badRequest(`Chỉ còn ${available} sản phẩm cho phân loại này`);
+  }
+}
+
+/** Lấy giỏ hàng kèm chi tiết + tổng tiền tạm tính + tồn khả dụng từng dòng. */
 export async function getCart(customerId: string) {
   const cart = await getOrCreateCart(customerId);
-  const items = await prisma.cartItem.findMany({
+  const rows = await prisma.cartItem.findMany({
     where: { cartId: cart.id },
     include: itemInclude,
     orderBy: { addedAt: 'asc' },
   });
+  const items = await Promise.all(
+    rows.map(async (it) => ({ ...it, available: await availableStock(it.productId, it.size, it.color) })),
+  );
   const subtotal = items.reduce(
     (sum, it) => sum + Number(it.product.salePrice) * it.quantity,
     0,
@@ -43,6 +67,22 @@ export async function addItem(customerId: string, input: AddItemInput) {
     throw AppError.notFound('Sản phẩm không tồn tại');
   }
   const cart = await getOrCreateCart(customerId);
+
+  // Không cho thêm vượt tồn (tính cả số lượng đã có trong giỏ)
+  const existing = await prisma.cartItem.findUnique({
+    where: {
+      cartId_productId_size_color: {
+        cartId: cart.id,
+        productId: input.productId,
+        size: input.size ?? '',
+        color: input.color ?? '',
+      },
+    },
+  });
+  assertEnough(
+    (existing?.quantity ?? 0) + input.quantity,
+    await availableStock(input.productId, input.size, input.color),
+  );
 
   await prisma.cartItem.upsert({
     where: {
@@ -78,7 +118,8 @@ async function assertItemOwned(customerId: string, itemId: string) {
 }
 
 export async function updateItem(customerId: string, itemId: string, quantity: number) {
-  await assertItemOwned(customerId, itemId);
+  const item = await assertItemOwned(customerId, itemId);
+  assertEnough(quantity, await availableStock(item.productId, item.size, item.color));
   await prisma.cartItem.update({ where: { id: itemId }, data: { quantity } });
   return getCart(customerId);
 }
