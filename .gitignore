@@ -36,3 +36,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Realm sinh tự động theo APP_URL (run.sh)
+infra/keycloak/realm.local.json

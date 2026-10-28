@@ -1,10 +1,18 @@
-# Toàn bộ hệ thống trong 1 lệnh:  docker compose up -d --build   (từ thư mục code/)
+# Toàn bộ hệ thống trong 1 lệnh:  ./run.sh   (hoặc docker compose up -d --build) — từ thư mục code/
 # Gồm: PostgreSQL · Keycloak · Backend (Express/Prisma) · Frontend (Next.js)
 #
-# Mạng OIDC: trình duyệt gọi Keycloak qua http://localhost:8080 (cổng publish); các container
-# gọi nội bộ qua http://keycloak:8080 (Docker network). Auth.js/backend tự viết lại host
-# localhost→keycloak cho request server-side, nên issuer vẫn là localhost (khớp token trình duyệt)
-# mà không cần sửa /etc/hosts. Đăng nhập tại http://localhost:3000.
+# Mạng OIDC: trình duyệt gọi Keycloak qua URL công khai (mặc định http://localhost:8080); các container
+# gọi nội bộ qua http://keycloak:8080 (Docker network). Auth.js/backend tự viết lại host công khai →
+# keycloak cho request server-side, nên issuer vẫn là URL công khai (khớp token trình duyệt).
+#
+# Cấu hình qua biến môi trường — đặt trong file code/.env (gitignore, mẫu: .env.example):
+#   Chạy máy cá nhân : không cần .env (mặc định localhost:3000/4000/8080/5432)
+#   Cổng 3000 bận    : APP_PORT=3001
+#   Server + domain  : APP_URL / API_PUBLIC_URL / AUTH_PUBLIC_URL + cổng & BIND_ADDR=127.0.0.1 (Nginx phía trước)
+x-urls:
+  app_url: &app_url ${APP_URL:-http://localhost:${APP_PORT:-3000}}
+  auth_issuer: &auth_issuer ${AUTH_PUBLIC_URL:-http://localhost:${KC_PORT:-8080}}/realms/fashion-shop
+
 services:
   postgres:
     image: postgres:16
@@ -14,7 +22,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: fashion_shop
     ports:
-      - '5432:5432'
+      - '${BIND_ADDR:-0.0.0.0}:${DB_PORT:-5432}:5432'
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./infra/postgres/init-keycloak-db.sql:/docker-entrypoint-initdb.d/init-keycloak-db.sql:ro
@@ -23,6 +31,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
@@ -30,52 +39,67 @@ services:
     command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-admin}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: postgres
       KC_HTTP_ENABLED: 'true'
-      # Issuer/endpoint Keycloak quảng bá ra ngoài = localhost (cho trình duyệt). Server-side
-      # gọi nội bộ qua keycloak:8080 và được Auth.js/backend viết lại host nên vẫn khớp issuer.
-      KC_HOSTNAME: http://localhost:8080
+      # Đứng sau Nginx/Cloudflare (https) → đọc X-Forwarded-* để sinh redirect https.
+      KC_PROXY_HEADERS: xforwarded
+      # Issuer/endpoint quảng bá ra ngoài = URL công khai (cho trình duyệt).
+      KC_HOSTNAME: ${AUTH_PUBLIC_URL:-http://localhost:${KC_PORT:-8080}}
     ports:
-      - '8080:8080'
+      - '${BIND_ADDR:-0.0.0.0}:${KC_PORT:-8080}:8080'
     volumes:
-      - ./infra/keycloak/realm-fashion-shop.json:/opt/keycloak/data/import/realm-fashion-shop.json:ro
+      # run.sh sinh realm.local.json (thêm redirect cho APP_URL) khi chạy với domain riêng
+      - ${KC_REALM_FILE:-./infra/keycloak/realm-fashion-shop.json}:/opt/keycloak/data/import/realm-fashion-shop.json:ro
       - ./infra/keycloak/themes:/opt/keycloak/themes:ro
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
 
   backend:
     build: ./backend
     container_name: fashion-backend
     env_file:
       - ./backend/.env.prod
+    environment:
+      CORS_ORIGIN: *app_url
+      FRONTEND_URL: *app_url
+      KEYCLOAK_ISSUER: *auth_issuer
+      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-admin}
     ports:
-      - '4000:4000'
+      - '${BIND_ADDR:-0.0.0.0}:${API_PORT:-4000}:4000'
     depends_on:
       postgres:
         condition: service_healthy
       keycloak:
         condition: service_started
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       args:
         # Biến browser (nướng vào bundle lúc build)
-        NEXT_PUBLIC_API_URL: http://localhost:4000/api
-        NEXT_PUBLIC_KEYCLOAK_ISSUER: http://localhost:8080/realms/fashion-shop
+        NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL:-http://localhost:${API_PORT:-4000}/api}
+        NEXT_PUBLIC_KEYCLOAK_ISSUER: *auth_issuer
     container_name: fashion-frontend
     env_file:
       - ./frontend/.env.prod
+    environment:
+      NEXTAUTH_URL: *app_url
+      AUTH_URL: *app_url
+      AUTH_KEYCLOAK_ISSUER: *auth_issuer
+      NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL:-http://localhost:${API_PORT:-4000}/api}
     ports:
-      - '3000:3000'
+      - '${BIND_ADDR:-0.0.0.0}:${APP_PORT:-3000}:3000'
     depends_on:
       - backend
       - keycloak
+    restart: unless-stopped
 
 volumes:
   pg_data:

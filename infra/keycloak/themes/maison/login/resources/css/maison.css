@@ -1,17 +1,25 @@
-/* MAISON — Editorial login theme. Phủ lên keycloak.v2 (PatternFly v5). */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap');
+/* MAISON Fresh — theme đăng nhập phủ lên keycloak.v2 (PatternFly v5).
+   Đồng bộ design system website: Montserrat, nền canvas sáng, chữ ink, nhấn coral + lime.
+   Token gốc: code/frontend/tailwind.config.ts */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap&subset=vietnamese');
 
 :root {
-  --m-ivory: #f7f4ef;
-  --m-bone: #efeae2;
-  --m-ink: #1a1714;
-  --m-graphite: #4a463f;
-  --m-mist: #8c857a;
-  --m-line: #e2dbd0;
-  --m-clay: #b25c3c;
+  --m-canvas: #fafaf7;
+  --m-surface: #ffffff;
+  --m-muted: #f2f2ee;
+  --m-ink: #111113;
+  --m-ink-2: #3f3f46;
+  --m-ink-3: #6b6b73;
+  --m-line: #e7e7e2;
+  --m-line-strong: #d4d4ce;
+  --m-brand: #ff4d2e;
+  --m-brand-600: #db3a16;
+  --m-lime: #d7ff3d;
+  --m-danger: #dc2626;
+  --m-danger-soft: #fee2e2;
 }
 
-/* Nền + font tổng thể, bỏ ảnh nền polygon tối mặc định.
+/* Nền + font tổng thể, bỏ ảnh nền mặc định.
    Lưu ý: class .login-pf nằm trên <html>, nền tối được set ở ".login-pf body". */
 html.login-pf,
 html.login-pf body,
@@ -19,34 +27,50 @@ body#keycloak-bg,
 .login-pf body,
 body,
 .login-pf-page {
-  background: var(--m-ivory) !important;
+  background: var(--m-canvas) !important;
   background-image: none !important;
-  background-color: var(--m-ivory) !important;
   color: var(--m-ink) !important;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  font-size: 16px !important;
 }
-/* Layout PatternFly login: .pf-v5-c-login là flex hướng row, căn dọc do align-items.
-   Đổi align-items sang flex-start để form lên gần đầu (giữ justify-content:center cho căn ngang). */
+/* Chỉ áp font cho phần chữ — KHÔNG dùng "body *" vì sẽ đè icon font (nút con mắt) */
+h1, h2, h3, p, span:not([class*='fa']):not([class*='pf-v5-c-button__icon']), a, label, input, button, div {
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+}
+i, [class^='fa'], [class*=' fa-'], .pf-v5-c-button__icon, .pf-v5-c-button__icon * {
+  font-family: 'Font Awesome 5 Free', 'FontAwesome', 'pficon', sans-serif !important;
+}
+
+/* Đưa form lên gần đầu trang, căn giữa ngang */
 .pf-v5-c-login {
   align-items: flex-start !important;
   justify-content: center !important;
-  padding-block-start: 4rem !important;
-  --pf-v5-c-login--PaddingTop: 4rem !important;
+  padding-block-start: 3rem !important;
+  --pf-v5-c-login--PaddingTop: 3rem !important;
 }
 .login-pf-page {
-  padding: 0 !important;
+  padding: 0 1rem !important;
 }
 
-/* Tên thương hiệu (header) */
+/* Logo chữ MAISON + chấm lime */
 #kc-header,
 #kc-header-wrapper {
   color: var(--m-ink) !important;
-  font-family: 'Fraunces', Georgia, serif !important;
-  font-size: 2rem !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.04em !important;
-  text-transform: none !important;
-  padding: 1.25rem 0 2rem !important;
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.04em !important;
+  text-transform: uppercase !important;
+  padding: 0.5rem 0 1.75rem !important;
+}
+#kc-header-wrapper::after {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: 0.15rem;
+  border-radius: 9999px;
+  background: var(--m-lime);
+  box-shadow: 0 0 0 1px rgba(17, 17, 19, 0.08);
 }
 
 /* Thẻ đăng nhập */
@@ -54,18 +78,32 @@ body,
 .login-pf-page .card-pf,
 .pf-v5-c-login__main,
 .pf-v5-c-card {
-  background: #ffffff !important;
+  background: var(--m-surface) !important;
   border: 1px solid var(--m-line) !important;
-  border-radius: 1.25rem !important;
-  box-shadow: 0 24px 60px -32px rgba(26, 23, 20, 0.28) !important;
-  padding: 2.25rem !important;
+  border-radius: 2rem !important;
+  box-shadow: 0 1px 2px rgba(17, 17, 19, 0.04), 0 16px 40px -12px rgba(17, 17, 19, 0.14) !important;
+  padding: 2rem !important;
+  max-width: 440px !important;
+}
+/* Header và body của thẻ thẳng hàng (PatternFly thụt lề body) */
+.pf-v5-c-login__main-header,
+.pf-v5-c-login__main-body,
+.pf-v5-c-login__main-footer {
+  padding-inline: 0 !important;
+}
+.pf-v5-c-login__main-header {
+  padding-block: 0 0.75rem !important;
+}
+#kc-form-buttons {
+  border: 0 !important;
 }
 
-/* Tiêu đề "Đăng nhập" */
+/* Tiêu đề */
 #kc-page-title {
-  font-family: 'Fraunces', Georgia, serif !important;
-  font-weight: 500 !important;
-  font-size: 1.9rem !important;
+  font-weight: 800 !important;
+  font-size: 1.875rem !important; /* 30px */
+  line-height: 1.25 !important;
+  letter-spacing: -0.02em !important;
   color: var(--m-ink) !important;
 }
 
@@ -73,157 +111,177 @@ body,
 label,
 .pf-v5-c-form__label,
 .pf-v5-c-form__label-text {
-  color: var(--m-graphite) !important;
-  font-weight: 500 !important;
+  color: var(--m-ink) !important;
+  font-size: 0.875rem !important; /* 14px */
+  font-weight: 600 !important;
 }
 
-/* Ô nhập (PatternFly v5 bọc input trong .pf-v5-c-form-control) */
-.pf-v5-c-form-control,
-input[type='text'],
-input[type='password'],
-input[type='email'] {
-  background: var(--m-ivory) !important;
-  border: 1px solid var(--m-line) !important;
-  border-radius: 0.65rem !important;
-  color: var(--m-ink) !important;
-  box-shadow: none !important;
-  min-height: 3rem !important;
-  --pf-v5-c-form-control--BorderColor: var(--m-line) !important;
-  --pf-v5-c-form-control--BorderBottomColor: var(--m-line) !important;
-  --pf-v5-c-form-control--focus--BorderBottomColor: var(--m-ink) !important;
-}
-.pf-v5-c-form-control > input {
+/* Ô nhập — bỏ gạch chân của PatternFly (vẽ bằng ::after / border-bottom) */
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--after--BorderBottomColor: transparent !important;
+  --pf-v5-c-form-control--before--BorderStyle: none !important;
   background: transparent !important;
-  border: none !important;
-  min-height: auto !important;
-  padding: 0.7rem 0.9rem !important;
 }
-.pf-v5-c-form-control:focus-within,
+.pf-v5-c-form-control::before,
+.pf-v5-c-form-control::after {
+  display: none !important;
+}
+input[type='text'],
+input[type='email'],
+input[type='password'],
+.pf-v5-c-form-control > input {
+  height: 44px !important;
+  background: var(--m-surface) !important;
+  border: 1px solid var(--m-line) !important;
+  border-radius: 0.75rem !important;
+  padding: 0 1rem !important;
+  color: var(--m-ink) !important;
+  font-size: 0.875rem !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:hover {
+  border-color: #a1a1aa !important;
+}
 input:focus {
   border-color: var(--m-ink) !important;
-  outline: none !important;
-  box-shadow: none !important;
+  box-shadow: 0 0 0 4px rgba(255, 77, 46, 0.18) !important;
 }
 
-/* Nhóm input có nút (mật khẩu + biểu tượng con mắt) — gộp thành 1 khối liền mạch */
+/* Nhóm mật khẩu + nút con mắt: một khối liền mạch, chỉ 1 viền */
 .pf-v5-c-input-group {
-  background: var(--m-ivory) !important;
-  border: 1px solid var(--m-line) !important;
-  border-radius: 0.65rem !important;
-  overflow: hidden;
-}
-.pf-v5-c-input-group:focus-within {
-  border-color: var(--m-ink) !important;
-}
-.pf-v5-c-input-group .pf-v5-c-form-control,
-.pf-v5-c-input-group input {
-  border: none !important;
-  border-radius: 0 !important;
+  position: relative !important;
+  border: 0 !important;
   background: transparent !important;
 }
-/* Nút con mắt: bỏ viền/nền hộp (PatternFly vẽ viền bằng ::after) */
-.pf-v5-c-input-group .pf-v5-c-button,
+.pf-v5-c-input-group > .pf-v5-c-input-group__item:first-child {
+  flex: 1 1 auto !important;
+}
+.pf-v5-c-input-group input {
+  padding-right: 3rem !important;
+}
+.pf-v5-c-input-group > .pf-v5-c-input-group__item:last-child {
+  position: absolute !important;
+  right: 4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 2 !important;
+}
 .pf-v5-c-button.pf-m-control {
   background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: var(--m-mist) !important;
-  padding: 0 0.9rem !important;
-}
-.pf-v5-c-input-group .pf-v5-c-button::after,
-.pf-v5-c-button.pf-m-control::after {
   border: 0 !important;
-  --pf-v5-c-button--after--BorderWidth: 0 !important;
+  border-radius: 9999px !important;
+  width: 36px !important;
+  height: 36px !important;
+  color: var(--m-ink-3) !important;
 }
-.pf-v5-c-input-group .pf-v5-c-button:hover,
+.pf-v5-c-button.pf-m-control::after {
+  display: none !important;
+}
 .pf-v5-c-button.pf-m-control:hover {
+  background: var(--m-muted) !important;
   color: var(--m-ink) !important;
-  background: transparent !important;
 }
 
-/* Nút chính (Sign In) */
-input[type='submit'],
-button[type='submit'],
-#kc-login,
-.pf-v5-c-button.pf-m-primary {
+/* Nút chính */
+.pf-v5-c-button.pf-m-primary,
+input[type='submit'] {
+  height: 48px !important;
   background: var(--m-ink) !important;
-  border: none !important;
-  color: var(--m-ivory) !important;
-  border-radius: 999px !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.01em !important;
-  padding: 0.85rem 1.5rem !important;
-  transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  transition: background 0.2s, transform 0.2s;
 }
-input[type='submit']:hover,
-button[type='submit']:hover,
-#kc-login:hover,
 .pf-v5-c-button.pf-m-primary:hover {
-  background: var(--m-clay) !important;
+  background: var(--m-ink-2) !important;
+}
+.pf-v5-c-button.pf-m-primary:active {
+  transform: scale(0.98);
+}
+.pf-v5-c-button.pf-m-primary::after {
+  display: none !important;
 }
 
 /* Liên kết */
 a,
 .pf-v5-c-button.pf-m-link {
-  color: var(--m-clay) !important;
+  color: var(--m-brand-600) !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
 }
 a:hover {
-  color: var(--m-ink) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+#kc-registration,
+#kc-registration-container {
+  color: var(--m-ink-2) !important;
+  font-size: 0.875rem !important;
 }
 
-/* Đường kẻ / khối social */
-hr,
-.pf-v5-c-divider {
+/* Đường kẻ */
+.pf-v5-c-divider,
+hr {
   border-color: var(--m-line) !important;
-  background: var(--m-line) !important;
+  --pf-v5-c-divider--BackgroundColor: var(--m-line) !important;
 }
 
-/* Khối "Or sign in with" + nút social (Google) */
+/* Khối "Hoặc đăng nhập bằng" + nút social (Google) */
 #kc-social-providers {
-  margin-top: 1.25rem;
+  margin-top: 1.25rem !important;
 }
 .pf-v5-c-login__main-footer-links {
-  display: flex !important;
   justify-content: center !important;
   gap: 0.75rem !important;
-  padding: 0 !important;
-  list-style: none !important;
 }
-.pf-v5-c-login__main-footer-links-item {
-  width: auto !important;
-}
-/* Nút social: hình tròn 48px, icon ở giữa, viền nhã */
 .pf-v5-c-login__main-footer-links-item-link {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 3rem !important;
-  height: 3rem !important;
-  padding: 0 !important;
-  border: 1px solid var(--m-line) !important;
-  border-radius: 999px !important;
-  color: var(--m-graphite) !important;
-  background: #fff !important;
-  transition: border-color 0.25s ease, transform 0.25s ease !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 48px !important;
+  height: 48px !important;
+  border: 1px solid var(--m-line-strong) !important;
+  border-radius: 9999px !important;
+  background: var(--m-surface) !important;
+  transition: border-color 0.2s, background 0.2s;
 }
 .pf-v5-c-login__main-footer-links-item-link:hover {
   border-color: var(--m-ink) !important;
-  transform: translateY(-1px);
+  background: var(--m-canvas) !important;
 }
 .pf-v5-c-login__main-footer-links-item-link svg {
-  width: 1.15rem !important;
-  height: 1.15rem !important;
+  width: 20px !important;
+  height: 20px !important;
 }
 
-/* Cảnh báo / lỗi giữ tông đất nung thay vì đỏ chói */
+/* Thông báo lỗi / cảnh báo */
+.alert-error,
 .pf-v5-c-alert.pf-m-danger,
-.alert-error {
-  border-color: var(--m-clay) !important;
+.pf-v5-c-helper-text__item.pf-m-error {
+  background: var(--m-danger-soft) !important;
+  color: var(--m-danger) !important;
+  border: 0 !important;
+  border-radius: 0.75rem !important;
+}
+.pf-v5-c-alert {
+  border-radius: 1rem !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Ẩn bộ chọn ngôn ngữ (chỉ dùng tiếng Việt) */
-#kc-locale,
-.pf-v5-c-login__main-header-utilities,
-div.pf-v5-c-dropdown#kc-locale-dropdown {
+div.pf-v5-c-dropdown#kc-locale-dropdown,
+#kc-locale {
   display: none !important;
+}
+
+/* Ẩn icon trạng thái lỗi của PatternFly trong ô nhập (đè lên nút con mắt) — thông báo lỗi bên dưới đã đủ rõ */
+.pf-v5-c-form-control__utilities {
+  display: none !important;
+}
+.pf-v5-c-helper-text__item.pf-m-error {
+  padding: 0.5rem 0.75rem !important;
 }

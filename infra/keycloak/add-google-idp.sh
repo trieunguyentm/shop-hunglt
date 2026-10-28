@@ -6,17 +6,19 @@
 #   1. https://console.cloud.google.com/ → APIs & Services → Credentials
 #   2. Create OAuth client ID → Web application
 #   3. Authorized redirect URI:
-#        http://localhost:8080/realms/fashion-shop/broker/google/endpoint
+#        <URL Keycloak công khai>/realms/fashion-shop/broker/google/endpoint
+#        (máy cá nhân: http://localhost:8080/realms/fashion-shop/broker/google/endpoint)
 #   4. Lấy Client ID + Client Secret.
 #
 # Chạy:
 #   GOOGLE_CLIENT_ID=xxx GOOGLE_CLIENT_SECRET=yyy ./add-google-idp.sh
+#   (hoặc điền 2 biến này vào code/.env — ./run.sh tự gọi script sau khi Keycloak sẵn sàng)
 set -euo pipefail
 
-KC_URL="${KC_URL:-http://localhost:8080}"
+KC_URL="${KC_URL:-http://localhost:${KC_PORT:-8080}}"
 REALM="${REALM:-fashion-shop}"
 KC_ADMIN="${KC_ADMIN:-admin}"
-KC_ADMIN_PW="${KC_ADMIN_PW:-admin}"
+KC_ADMIN_PW="${KC_ADMIN_PW:-${KC_ADMIN_PASSWORD:-admin}}"
 
 if [[ -z "${GOOGLE_CLIENT_ID:-}" || -z "${GOOGLE_CLIENT_SECRET:-}" ]]; then
   echo "❌ Thiếu GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET." >&2
