@@ -8,6 +8,7 @@ export interface ApiResponse<T> {
     pageSize: number;
     total: number;
     totalPages: number;
+    average?: number;
   };
   error?: { message: string; details?: unknown };
 }
@@ -207,6 +208,8 @@ export interface CartItem {
   size?: string | null;
   color?: string | null;
   quantity: number;
+  /** Tồn kho khả dụng của phân loại này (backend tính). */
+  available?: number;
   product: {
     id: string;
     name: string;

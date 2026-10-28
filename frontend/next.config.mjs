@@ -4,9 +4,10 @@ const nextConfig = {
   // Đóng gói gọn cho Docker (server.js + node_modules tối thiểu)
   output: 'standalone',
   images: {
+    // Admin có thể dán URL ảnh từ bất kỳ nguồn HTTPS nào (CDN, Unsplash...) — tránh
+    // next/image ném lỗi "hostname not configured" làm hỏng trang sản phẩm.
     remotePatterns: [
-      { protocol: 'https', hostname: 'picsum.photos' },
-      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: 'localhost' },
     ],
   },

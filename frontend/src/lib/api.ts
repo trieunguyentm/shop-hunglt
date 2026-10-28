@@ -1,4 +1,24 @@
-import type { ApiResponse } from './types';
+import type {
+  AdminAccount,
+  AdminCustomer,
+  AdminCustomerDetail,
+  AdminProductDetail,
+  AdminProductListItem,
+  ApiResponse,
+  ApplyPromotionResult,
+  AuthUser,
+  Cart,
+  Category,
+  ContactMessage,
+  Order,
+  ProductDetail,
+  ProductListItem,
+  Promotion,
+  Review,
+  StatsOverview,
+  StockReceipt,
+  Supplier,
+} from './types';
 
 // Server-side (trong container Docker) gọi backend qua URL nội bộ; trình duyệt dùng URL public.
 const API_URL =
@@ -91,26 +111,25 @@ export async function apiFetch<T>(
 }
 
 // ===== Endpoint helpers =====
-import type {
-  AdminAccount,
-  AdminProductDetail,
-  AdminProductListItem,
-  ApplyPromotionResult,
-  AuthUser,
-  Cart,
-  Category,
-  Order,
-  ProductDetail,
-  ProductListItem,
-  AdminCustomer,
-  AdminCustomerDetail,
-  ContactMessage,
-  Promotion,
-  Review,
-  StatsOverview,
-  StockReceipt,
-  Supplier,
-} from './types';
+
+type Query = Record<string, string | number | undefined | null>;
+
+/** Dựng query string, bỏ qua giá trị rỗng: qs({ page: 2, search: '' }) → "?page=2" */
+function qs(params?: Query): string {
+  const sp = new URLSearchParams();
+  Object.entries(params ?? {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') sp.set(k, String(v));
+  });
+  const s = sp.toString();
+  return s ? `?${s}` : '';
+}
+
+/** Tham số danh sách có phân trang dùng chung ở khu quản trị. */
+export interface ListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}
 
 // --- Stats ---
 export async function getStatsOverview(token: string) {
@@ -130,9 +149,8 @@ export async function sendContact(input: {
     body: JSON.stringify(input),
   });
 }
-export async function getContactMessages(token: string, status?: string) {
-  const qs = status ? `?status=${status}` : '';
-  return apiFetch<ContactMessage[]>(`/contact${qs}`, { token });
+export async function getContactMessages(token: string, params?: ListParams & { status?: string }) {
+  return apiFetch<ContactMessage[]>(`/contact${qs({ ...params })}`, { token });
 }
 export async function updateContactStatus(token: string, id: string, status: string) {
   return apiFetch<ContactMessage>(`/contact/${id}`, {
@@ -143,18 +161,13 @@ export async function updateContactStatus(token: string, id: string, status: str
 }
 
 // --- Customers (admin) ---
-export async function getCustomers(token: string, search?: string) {
-  const qs = search ? `?search=${encodeURIComponent(search)}` : '';
-  return apiFetch<AdminCustomer[]>(`/customers${qs}`, { token });
+export async function getCustomers(token: string, params?: ListParams) {
+  return apiFetch<AdminCustomer[]>(`/customers${qs({ ...params })}`, { token });
 }
 export async function getCustomer(token: string, id: string) {
   return apiFetch<AdminCustomerDetail>(`/customers/${id}`, { token });
 }
-export async function updateCustomer(
-  token: string,
-  id: string,
-  input: { tier?: string; status?: string },
-) {
+export async function updateCustomer(token: string, id: string, input: { tier?: string; status?: string }) {
   return apiFetch<AdminCustomerDetail>(`/customers/${id}`, {
     token,
     method: 'PATCH',
@@ -163,8 +176,8 @@ export async function updateCustomer(
 }
 
 // --- Stock receipts ---
-export async function getStockReceipts(token: string) {
-  return apiFetch<StockReceipt[]>('/stock-receipts', { token });
+export async function getStockReceipts(token: string, params?: ListParams & { supplierId?: string }) {
+  return apiFetch<StockReceipt[]>(`/stock-receipts${qs({ ...params })}`, { token });
 }
 export async function getStockReceipt(token: string, id: string) {
   return apiFetch<StockReceipt>(`/stock-receipts/${id}`, { token });
@@ -216,9 +229,11 @@ export async function cancelOrder(token: string, id: string) {
 }
 
 // --- Orders (admin) ---
-export async function getAdminOrders(token: string, status?: string) {
-  const qs = status ? `?status=${status}` : '';
-  return apiFetch<Order[]>(`/orders${qs}`, { token });
+export async function getAdminOrders(token: string, params?: ListParams & { status?: string }) {
+  return apiFetch<Order[]>(`/orders${qs({ ...params })}`, { token });
+}
+export async function getAdminOrder(token: string, id: string) {
+  return apiFetch<Order>(`/orders/manage/${id}`, { token });
 }
 export async function updateOrderStatus(token: string, id: string, status: string) {
   return apiFetch<Order>(`/orders/${id}/status`, { token, method: 'PATCH', body: JSON.stringify({ status }) });
@@ -251,19 +266,13 @@ export async function deletePromotionApi(token: string, id: string) {
 }
 
 // --- Review ---
-export async function getReviews(productId: string) {
-  return apiFetch<Review[]>(`/reviews?productId=${productId}`);
+export async function getReviews(productId: string, params?: { page?: number; pageSize?: number }) {
+  return apiFetch<Review[]>(`/reviews${qs({ productId, ...params })}`);
 }
 export async function checkReviewEligibility(token: string, productId: string) {
-  return apiFetch<{ canReview: boolean; reason: string | null }>(
-    `/reviews/eligibility?productId=${productId}`,
-    { token },
-  );
+  return apiFetch<{ canReview: boolean; reason: string | null }>(`/reviews/eligibility${qs({ productId })}`, { token });
 }
-export async function postReview(
-  token: string,
-  input: { productId: string; rating: number; content?: string },
-) {
+export async function postReview(token: string, input: { productId: string; rating: number; content?: string }) {
   return apiFetch<Review>('/reviews', { token, method: 'POST', body: JSON.stringify(input) });
 }
 
@@ -283,8 +292,7 @@ export async function deleteCategoryApi(token: string, id: string) {
 
 // --- Suppliers ---
 export async function getSuppliers(token: string, search?: string) {
-  const qs = search ? `?search=${encodeURIComponent(search)}` : '';
-  return apiFetch<Supplier[]>(`/suppliers${qs}`, { token });
+  return apiFetch<Supplier[]>(`/suppliers${qs({ search })}`, { token });
 }
 export async function createSupplier(token: string, input: Partial<Supplier>) {
   return apiFetch<Supplier>('/suppliers', { token, method: 'POST', body: JSON.stringify(input) });
@@ -297,14 +305,8 @@ export async function deleteSupplierApi(token: string, id: string) {
 }
 
 // --- Products (admin) ---
-export async function getAdminProducts(token: string, params?: { search?: string; status?: string; page?: number }) {
-  const qs = new URLSearchParams(
-    Object.entries(params ?? {}).reduce<Record<string, string>>((a, [k, v]) => {
-      if (v !== undefined && v !== '') a[k] = String(v);
-      return a;
-    }, {}),
-  ).toString();
-  return apiFetch<AdminProductListItem[]>(`/products/manage/list${qs ? `?${qs}` : ''}`, { token });
+export async function getAdminProducts(token: string, params?: ListParams & { status?: string }) {
+  return apiFetch<AdminProductListItem[]>(`/products/manage/list${qs({ ...params })}`, { token });
 }
 export async function getAdminProduct(token: string, id: string) {
   return apiFetch<AdminProductDetail>(`/products/manage/${id}`, { token });
@@ -338,42 +340,23 @@ export async function registerCustomer(input: {
 }
 
 // --- Account (ADMIN) ---
-export async function getAccounts(token: string, search?: string) {
-  const qs = search ? `?search=${encodeURIComponent(search)}` : '';
-  return apiFetch<AdminAccount[]>(`/accounts${qs}`, { token });
+export async function getAccounts(token: string, params?: ListParams) {
+  return apiFetch<AdminAccount[]>(`/accounts${qs({ ...params })}`, { token });
 }
-
 export async function createAccount(
   token: string,
-  input: {
-    username: string;
-    email: string;
-    password: string;
-    fullName: string;
-    roles: string[];
-  },
+  input: { username: string; email: string; password: string; fullName: string; roles: string[] },
 ) {
-  return apiFetch<{ id: string }>('/accounts', {
-    token,
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
+  return apiFetch<{ id: string }>('/accounts', { token, method: 'POST', body: JSON.stringify(input) });
+}
+export async function updateAccount(token: string, id: string, input: { roles?: string[]; enabled?: boolean }) {
+  return apiFetch<{ id: string }>(`/accounts/${id}`, { token, method: 'PATCH', body: JSON.stringify(input) });
+}
+export async function deleteAccount(token: string, id: string) {
+  return apiFetch<{ id: string }>(`/accounts/${id}`, { token, method: 'DELETE' });
 }
 
-export async function updateAccount(
-  token: string,
-  id: string,
-  input: { roles?: string[]; enabled?: boolean },
-) {
-  return apiFetch<{ id: string }>(`/accounts/${id}`, {
-    token,
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  });
-}
-
-// --- Products ---
-
+// --- Products (public) ---
 export async function getProducts(params?: {
   page?: number;
   pageSize?: number;
@@ -381,15 +364,9 @@ export async function getProducts(params?: {
   category?: string;
   sort?: string;
 }) {
-  const qs = new URLSearchParams(
-    Object.entries(params ?? {}).reduce<Record<string, string>>((acc, [k, v]) => {
-      if (v !== undefined && v !== '') acc[k] = String(v);
-      return acc;
-    }, {}),
-  ).toString();
-  return apiFetch<ProductListItem[]>(`/products${qs ? `?${qs}` : ''}`);
+  return apiFetch<ProductListItem[]>(`/products${qs({ ...params })}`);
 }
 
 export async function getProductBySlug(slug: string) {
-  return apiFetch<ProductDetail>(`/products/${slug}`);
+  return apiFetch<ProductDetail>(`/products/${encodeURIComponent(slug)}`);
 }

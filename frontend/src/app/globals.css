@@ -4,75 +4,90 @@
 
 @layer base {
   :root {
-    --header-h: 76px;
+    --header-h: 72px;
   }
 
   html {
     scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply bg-ivory text-ink font-sans antialiased;
+    @apply bg-canvas font-sans text-base text-ink antialiased;
     text-rendering: optimizeLegibility;
     /* Chặn tràn ngang (vd dải marquee) gây scroll ngang ngoài ý muốn */
     overflow-x: hidden;
   }
 
   ::selection {
-    @apply bg-clay text-ivory;
+    @apply bg-lime-400 text-ink;
   }
 
-  /* Tiêu đề dùng font display serif */
-  h1, h2, h3 {
-    @apply font-display;
+  h1, h2, h3, h4 {
+    @apply font-bold tracking-tight text-ink;
+  }
+
+  /* Focus rõ ràng cho bàn phím, không làm phiền khi click chuột */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-canvas;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
   }
 }
 
 @layer components {
-  /* Nhãn nhỏ in hoa giãn chữ — đặc trưng layout tạp chí thời trang */
-  .eyebrow {
-    @apply text-xs uppercase tracking-widest2 text-mist font-medium;
-  }
-
-  /* Nút chính */
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-7 py-3
-           text-sm font-medium text-ivory transition-all duration-300 ease-silk
-           hover:bg-clay hover:-translate-y-0.5;
-  }
-
-  /* Nút viền */
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink/30 px-7 py-3
-           text-sm font-medium text-ink transition-all duration-300 ease-silk
-           hover:border-ink hover:bg-ink hover:text-ivory;
-  }
-
   .container-page {
-    @apply mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-12;
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
   }
 
-  /* Gạch chân chạy khi hover — dùng cho link điều hướng */
+  /* Khoảng đệm đầu trang (header dạng sticky nên không cần bù chiều cao) */
+  .page-top {
+    @apply pt-6 sm:pt-10;
+  }
+
+  /* Nhãn nhỏ in hoa phía trên tiêu đề */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-ink-3;
+  }
+
+  /* Thang tiêu đề responsive */
+  .heading-display {
+    @apply text-4xl font-extrabold tracking-tightest sm:text-6xl lg:text-7xl;
+  }
+  .heading-1 {
+    @apply text-3xl font-extrabold tracking-tight sm:text-4xl;
+  }
+  .heading-2 {
+    @apply text-2xl font-bold tracking-tight sm:text-3xl;
+  }
+  .heading-3 {
+    @apply text-xl font-bold;
+  }
+
+  /* Gạch chân chạy khi hover — link điều hướng */
   .link-underline {
-    @apply relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-0
-           after:bg-current after:transition-all after:duration-300 after:ease-silk
-           hover:after:w-full;
+    @apply relative after:absolute after:-bottom-0.5 after:left-0 after:h-[2px] after:w-0 after:rounded-full
+           after:bg-current after:transition-all after:duration-300 after:ease-silk hover:after:w-full;
   }
 
-  /* Ô <select> tùy biến — mũi tên riêng, có khoảng cách phải, đồng bộ thiết kế */
-  .select-field {
-    @apply cursor-pointer appearance-none rounded-full border border-line bg-ivory bg-no-repeat
-           py-2.5 pl-5 pr-11 text-sm text-ink outline-none transition-colors duration-300 ease-silk
-           hover:border-ink/40 focus:border-ink;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%231A1714'%20stroke-width='1.8'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolyline%20points='6%209%2012%2015%2018%209'/%3E%3C/svg%3E");
-    background-position: right 1rem center;
-    background-size: 1rem;
+  /* Đánh dấu nổi bật kiểu "highlighter" lime */
+  .mark-lime {
+    @apply relative z-0 whitespace-nowrap before:absolute before:inset-x-[-0.08em] before:bottom-[0.08em]
+           before:-z-10 before:h-[0.42em] before:-rotate-1 before:rounded-sm before:bg-lime-400;
   }
 
-  /* Ô nhập text đồng bộ với select-field */
-  .input-field {
-    @apply rounded-full border border-line bg-ivory px-5 py-2.5 text-sm text-ink outline-none
-           transition-colors duration-300 ease-silk placeholder:text-mist hover:border-ink/40 focus:border-ink;
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -80,5 +95,19 @@
   /* Ẩn phần tử cho tới khi animation GSAP kích hoạt (tránh nháy) */
   .reveal-init {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal-init {
+    opacity: 1;
   }
 }
