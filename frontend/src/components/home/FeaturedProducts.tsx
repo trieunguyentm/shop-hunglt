@@ -1,45 +1,33 @@
 import { getProducts } from '@/lib/api';
-import { ProductCard } from '@/components/product/ProductCard';
-import { Reveal } from '@/components/animation/Reveal';
+import { ProductGrid } from '@/components/product/ProductCard';
 import { ButtonLink } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { WifiOff } from 'lucide-react';
 import type { ProductListItem } from '@/lib/types';
+import { SectionHeading } from './SectionHeading';
 
 /**
- * Server Component — lấy sản phẩm nổi bật từ API.
- * Nếu backend chưa chạy, hiển thị thông báo nhẹ nhàng thay vì lỗi trắng trang.
+ * Server Component — lấy sản phẩm mới nhất từ API.
+ * Backend chưa chạy → hiển thị trạng thái nhẹ nhàng thay vì lỗi trắng trang.
  */
-export async function FeaturedProducts() {
+export async function FeaturedProducts({ title = 'Hàng mới về', eyebrow = 'Mới nhất' }: { title?: string; eyebrow?: string }) {
   let products: ProductListItem[] = [];
   let apiDown = false;
   try {
-    const res = await getProducts({ pageSize: 4, sort: 'newest' });
-    products = res.data;
+    products = (await getProducts({ pageSize: 8, sort: 'newest' })).data;
   } catch {
     apiDown = true;
   }
 
   return (
-    <section className="container-page py-24">
-      <Reveal className="mb-12 text-center">
-        <p className="eyebrow mb-3">Tuyển chọn</p>
-        <h2 className="text-display-md">Sản phẩm nổi bật</h2>
-      </Reveal>
-
+    <section className="container-page py-20">
+      <SectionHeading eyebrow={eyebrow} title={title} href="/products" />
       {apiDown ? (
-        <p className="rounded-xl2 border border-dashed border-line bg-bone p-10 text-center text-sm text-mist">
-          Chưa kết nối được API. Hãy chạy backend & seed dữ liệu (xem README) để hiển thị sản phẩm.
-        </p>
+        <EmptyState icon={<WifiOff size={24} />} title="Chưa kết nối được máy chủ" description="Sản phẩm sẽ hiển thị khi hệ thống hoạt động trở lại." />
       ) : (
-        <div className="grid grid-cols-2 gap-x-5 gap-y-10 lg:grid-cols-4">
-          {products.map((p, i) => (
-            <Reveal key={p.id} delay={i * 0.06}>
-              <ProductCard product={p} />
-            </Reveal>
-          ))}
-        </div>
+        <ProductGrid products={products} />
       )}
-
-      <div className="mt-14 text-center">
+      <div className="mt-12 text-center sm:hidden">
         <ButtonLink href="/products" variant="outline">
           Xem tất cả sản phẩm
         </ButtonLink>

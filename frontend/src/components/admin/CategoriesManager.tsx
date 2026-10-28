@@ -1,33 +1,39 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
-import {
-  createCategory,
-  deleteCategoryApi,
-  getCategories,
-  updateCategoryApi,
-} from '@/lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { CornerDownRight, Pencil, Plus, Trash2 } from 'lucide-react';
+import { createCategory, deleteCategoryApi, getCategories, updateCategoryApi } from '@/lib/api';
+import { useAccessToken } from '@/hooks/useAccessToken';
+import { errorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { Input, Textarea } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
+import { PageHeader } from '@/components/ui/misc';
+import { Select } from '@/components/ui/Select';
 import type { Category } from '@/lib/types';
 
 const EMPTY = { id: '', name: '', description: '', parentId: '' };
 
 export function CategoriesManager() {
-  const { data: session } = useSession();
-  const token = session?.accessToken;
-
+  const { token } = useAccessToken();
+  const confirm = useConfirm();
   const [items, setItems] = useState<Category[]>([]);
-  const [form, setForm] = useState(EMPTY);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState(EMPTY);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setItems((await getCategories()).data);
+      setError('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi tải danh mục');
+      setError(errorMessage(e, 'Lỗi tải danh mục'));
     } finally {
       setLoading(false);
     }
@@ -37,95 +43,109 @@ export function CategoriesManager() {
     void load();
   }, [load]);
 
+  // Sắp cha trước, con ngay sau cha (hiển thị dạng cây)
+  const rows = useMemo(() => {
+    const roots = items.filter((c) => !c.parentId || !items.some((p) => p.id === c.parentId));
+    return roots.flatMap((r) => [r, ...items.filter((c) => c.parentId === r.id)]);
+  }, [items]);
+  const nameOf = (id?: string | null) => items.find((c) => c.id === id)?.name;
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
-    setError('');
+    setSaving(true);
     try {
-      const payload = {
-        name: form.name,
-        description: form.description || undefined,
-        parentId: form.parentId || null,
-      };
+      const payload = { name: form.name.trim(), description: form.description.trim() || undefined, parentId: form.parentId || null };
       if (form.id) await updateCategoryApi(token, form.id, payload);
       else await createCategory(token, payload);
-      setForm(EMPTY);
+      toast.success(form.id ? 'Đã cập nhật danh mục' : 'Đã thêm danh mục');
+      setOpen(false);
       await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lưu thất bại');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Lưu thất bại'));
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function onDelete(id: string) {
+  async function onDelete(c: Category) {
     if (!token) return;
+    const ok = await confirm({
+      title: `Xóa danh mục “${c.name}”?`,
+      description: c._count?.products ? `Danh mục đang có ${c._count.products} sản phẩm — hệ thống sẽ từ chối xóa.` : 'Thao tác này không thể hoàn tác.',
+      confirmText: 'Xóa',
+      danger: true,
+    });
+    if (!ok) return;
     try {
-      await deleteCategoryApi(token, id);
+      await deleteCategoryApi(token, c.id);
+      toast.success('Đã xóa danh mục');
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Xóa thất bại');
+      toast.error(errorMessage(e, 'Xóa thất bại'));
     }
   }
 
-  const inputCls =
-    'rounded-lg border border-line bg-ivory px-3 py-2 text-sm outline-none focus:border-ink';
+  const columns: Column<Category>[] = [
+    {
+      key: 'name',
+      header: 'Tên danh mục',
+      cell: (c) => (
+        <span className="flex items-center gap-2 font-semibold">
+          {c.parentId && <CornerDownRight size={15} className="text-ink-4" />}
+          {c.name}
+        </span>
+      ),
+    },
+    { key: 'slug', header: 'Đường dẫn', hideOnMobile: true, cell: (c) => <code className="rounded bg-muted px-1.5 py-0.5 text-xs">/{c.slug}</code> },
+    { key: 'parent', header: 'Danh mục cha', hideOnMobile: true, cell: (c) => <span className="text-ink-3">{nameOf(c.parentId) ?? '—'}</span> },
+    { key: 'count', header: 'Sản phẩm', align: 'right', cell: (c) => <span className="font-semibold">{c._count?.products ?? 0}</span> },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      cell: (c) => (
+        <div className="flex justify-end gap-1">
+          <Button size="icon-sm" variant="ghost" aria-label={`Sửa ${c.name}`} onClick={() => { setForm({ id: c.id, name: c.name, description: c.description ?? '', parentId: c.parentId ?? '' }); setOpen(true); }}>
+            <Pencil size={15} />
+          </Button>
+          <Button size="icon-sm" variant="ghost" className="hover:bg-danger-soft hover:text-danger" aria-label={`Xóa ${c.name}`} onClick={() => onDelete(c)}>
+            <Trash2 size={15} />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-8">
-      <form onSubmit={onSubmit} className="rounded-xl2 border border-line bg-bone p-6">
-        <h2 className="mb-4 font-display text-xl">{form.id ? 'Sửa danh mục' : 'Thêm danh mục'}</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <input className={inputCls} placeholder="Tên danh mục" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <input className={inputCls} placeholder="Mô tả" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          <select className={inputCls} value={form.parentId} onChange={(e) => setForm({ ...form, parentId: e.target.value })}>
-            <option value="">— Danh mục gốc —</option>
-            {items.filter((c) => c.id !== form.id).map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <div className="flex gap-2">
-            <Button type="submit">{form.id ? 'Cập nhật' : 'Thêm'}</Button>
-            {form.id && (
-              <Button type="button" variant="outline" onClick={() => setForm(EMPTY)}>Hủy</Button>
-            )}
-          </div>
-        </div>
-      </form>
+    <>
+      <PageHeader title="Danh mục" description={`${items.length} danh mục sản phẩm`} actions={<Button leftIcon={<Plus size={17} />} onClick={() => { setForm(EMPTY); setOpen(true); }}>Thêm danh mục</Button>} />
+      {error && <p className="mb-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p>}
+      <DataTable columns={columns} rows={rows} rowKey={(c) => c.id} loading={loading} emptyTitle="Chưa có danh mục" />
 
-      {error && <p className="text-sm text-clay-dark">{error}</p>}
-
-      <div className="overflow-x-auto rounded-xl2 border border-line">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-bone text-mist">
-            <tr>
-              <th className="px-4 py-3 font-medium">Tên</th>
-              <th className="px-4 py-3 font-medium">Slug</th>
-              <th className="px-4 py-3 font-medium">Số SP</th>
-              <th className="px-4 py-3 font-medium">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-mist">Đang tải...</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-mist">Chưa có danh mục.</td></tr>
-            ) : (
-              items.map((c) => (
-                <tr key={c.id} className="border-t border-line">
-                  <td className="px-4 py-3">{c.name}</td>
-                  <td className="px-4 py-3 text-mist">{c.slug}</td>
-                  <td className="px-4 py-3">{c._count?.products ?? 0}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-3">
-                      <button className="link-underline text-graphite hover:text-ink" onClick={() => setForm({ id: c.id, name: c.name, description: c.description ?? '', parentId: c.parentId ?? '' })}>Sửa</button>
-                      <button className="link-underline text-clay-dark" onClick={() => onDelete(c.id)}>Xóa</button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <Modal
+        open={open}
+        onClose={() => !saving && setOpen(false)}
+        title={form.id ? 'Sửa danh mục' : 'Thêm danh mục'}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Hủy</Button>
+            <Button type="submit" form="category-form" loading={saving}>{form.id ? 'Lưu' : 'Thêm'}</Button>
+          </>
+        }
+      >
+        <form id="category-form" onSubmit={onSubmit} className="space-y-4">
+          <Input label="Tên danh mục" required maxLength={100} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Áo khoác" />
+          <Select
+            label="Danh mục cha"
+            hint="Để trống nếu là danh mục gốc"
+            value={form.parentId}
+            onChange={(v) => setForm({ ...form, parentId: v })}
+            options={[{ value: '', label: '— Danh mục gốc —' }, ...items.filter((c) => c.id !== form.id && !c.parentId).map((c) => ({ value: c.id, label: c.name }))]}
+          />
+          <Textarea label="Mô tả" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        </form>
+      </Modal>
+    </>
   );
 }

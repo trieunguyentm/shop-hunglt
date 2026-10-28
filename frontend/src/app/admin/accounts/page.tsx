@@ -1,13 +1,15 @@
 import { AccountsManager } from '@/components/admin/AccountsManager';
+import { AdminOnly } from '@/components/admin/AdminOnly';
+import { auth } from '@/auth';
 
-export const metadata = { title: 'Quản lý tài khoản — MAISON' };
+export const metadata = { title: 'Tài khoản' };
 
-// UC7 — Quản lý tài khoản (ADMIN). Dữ liệu thao tác qua Keycloak Admin API ở backend.
-export default function AdminAccountsPage() {
+export default async function Page() {
+  const session = await auth();
   return (
-    <div>
-      <h1 className="mb-8 text-display-md">Quản lý tài khoản</h1>
-      <AccountsManager />
-    </div>
+    // UC7 — ADMIN. Thao tác qua Keycloak Admin API ở backend.
+    <AdminOnly>
+      <AccountsManager currentUserEmail={session?.user?.email} />
+    </AdminOnly>
   );
 }

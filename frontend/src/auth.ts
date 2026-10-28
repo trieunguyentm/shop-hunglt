@@ -31,7 +31,11 @@ const kcFetch: typeof fetch | undefined = INTERNAL_ORIGIN
         url.protocol = internal.protocol;
         url.host = internal.host;
       }
-      return fetch(url, init);
+      // Container vừa khởi động lại có thể chưa phân giải được tên dịch vụ trong Docker network
+      // → thử lại 1 lần thay vì trả lỗi "Configuration" cho người dùng.
+      return fetch(url, init).catch(
+        () => new Promise<Response>((resolve, reject) => setTimeout(() => fetch(url, init).then(resolve, reject), 800)),
+      );
     }
   : undefined;
 

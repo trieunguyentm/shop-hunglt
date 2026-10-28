@@ -1,12 +1,13 @@
+import { Suspense } from 'react';
 import { OrdersManager } from '@/components/admin/OrdersManager';
 
-export const metadata = { title: 'Quản lý đơn hàng — MAISON' };
+export const metadata = { title: 'Đơn hàng' };
 
-export default function AdminOrdersPage() {
+export default function Page() {
+  // OrdersManager đọc ?status= từ URL (useSearchParams) → cần Suspense boundary
   return (
-    <div>
-      <h1 className="mb-8 text-display-md">Quản lý đơn hàng</h1>
+    <Suspense>
       <OrdersManager />
-    </div>
+    </Suspense>
   );
 }

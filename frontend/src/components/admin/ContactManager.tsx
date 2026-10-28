@@ -1,109 +1,120 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Mail, Phone, Reply } from 'lucide-react';
 import { getContactMessages, updateContactStatus } from '@/lib/api';
+import { useAdminList } from '@/hooks/useAdminList';
+import { errorMessage, formatDateTime } from '@/lib/utils';
+import { CONTACT_STATUS_LABEL, CONTACT_STATUS_TONE } from '@/lib/orderStatus';
+import { Badge } from '@/components/ui/Badge';
+import { buttonClass } from '@/components/ui/Button';
+import { DataTable, type Column } from '@/components/ui/DataTable';
+import { Modal } from '@/components/ui/Modal';
+import { Pagination } from '@/components/ui/Pagination';
+import { PageHeader, Segmented } from '@/components/ui/misc';
+import { Select } from '@/components/ui/Select';
 import type { ContactMessage } from '@/lib/types';
 
-const STATUS_LABEL: Record<string, string> = {
-  NEW: 'Mới',
-  IN_PROGRESS: 'Đang xử lý',
-  RESOLVED: 'Đã xử lý',
-};
+type Filter = '' | ContactMessage['status'];
+const STATUS_OPTIONS = Object.entries(CONTACT_STATUS_LABEL).map(([value, label]) => ({ value, label }));
 
 export function ContactManager() {
-  const { data: session } = useSession();
-  const token = session?.accessToken;
-  const [items, setItems] = useState<ContactMessage[]>([]);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState<Filter>('');
+  const list = useAdminList(getContactMessages, { status: filter || undefined });
   const [selected, setSelected] = useState<ContactMessage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
+  async function changeStatus(m: ContactMessage, status: string) {
+    if (!list.token || status === m.status) return;
+    setSaving(true);
     try {
-      setItems((await getContactMessages(token, filter || undefined)).data);
+      await updateContactStatus(list.token, m.id, status);
+      setSelected((s) => (s && s.id === m.id ? { ...s, status: status as ContactMessage['status'] } : s));
+      toast.success(`Đã chuyển sang “${CONTACT_STATUS_LABEL[status]}”`);
+      await list.reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lỗi tải tin nhắn');
+      toast.error(errorMessage(e, 'Cập nhật thất bại'));
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  }, [token, filter]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  async function changeStatus(id: string, status: string) {
-    if (!token) return;
-    await updateContactStatus(token, id, status);
-    await load();
-    setSelected((s) => (s && s.id === id ? { ...s, status: status as ContactMessage['status'] } : s));
   }
 
-  const selectCls = 'select-field';
+  // Mở tin "Mới" → tự chuyển sang "Đang xử lý" để nhân viên khác biết đã có người nhận
+  function open(m: ContactMessage) {
+    setSelected(m);
+    if (m.status === 'NEW') void changeStatus(m, 'IN_PROGRESS');
+  }
+
+  const columns: Column<ContactMessage>[] = [
+    {
+      key: 'from',
+      header: 'Người gửi',
+      cell: (m) => (
+        <div className="min-w-0">
+          <p className={m.status === 'NEW' ? 'font-bold' : 'font-semibold'}>{m.fullName}</p>
+          <p className="truncate text-xs text-ink-3">{m.email}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'subject',
+      header: 'Nội dung',
+      className: 'min-w-[200px]',
+      cell: (m) => (
+        <div className="max-w-md">
+          <p className="line-clamp-1 font-semibold">{m.subject}</p>
+          <p className="line-clamp-1 text-xs text-ink-3">{m.content}</p>
+        </div>
+      ),
+    },
+    { key: 'date', header: 'Thời gian', hideOnMobile: true, cell: (m) => <span className="whitespace-nowrap text-ink-3">{formatDateTime(m.createdAt)}</span> },
+    { key: 'status', header: 'Trạng thái', cell: (m) => <Badge tone={CONTACT_STATUS_TONE[m.status]} dot>{CONTACT_STATUS_LABEL[m.status]}</Badge> },
+  ];
 
   return (
-    <div className="space-y-6">
-      <select className={selectCls} value={filter} onChange={(e) => setFilter(e.target.value)}>
-        <option value="">Tất cả trạng thái</option>
-        {Object.entries(STATUS_LABEL).map(([k, v]) => (
-          <option key={k} value={k}>{v}</option>
-        ))}
-      </select>
-      {error && <p className="text-sm text-clay-dark">{error}</p>}
+    <>
+      <PageHeader title="Liên hệ" description="Tin nhắn khách gửi từ trang Liên hệ" />
+      <Segmented<Filter> className="mb-5" value={filter} onChange={setFilter} options={[{ value: '', label: 'Tất cả' }, ...STATUS_OPTIONS.map((o) => ({ value: o.value as Filter, label: o.label }))]} />
+      {list.error && <p className="mb-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">{list.error}</p>}
+      <DataTable
+        columns={columns}
+        rows={list.rows}
+        rowKey={(m) => m.id}
+        loading={list.loading}
+        onRowClick={open}
+        emptyTitle="Không có tin nhắn"
+        footer={list.totalPages > 1 ? <Pagination page={list.page} totalPages={list.totalPages} onChange={list.setPage} /> : undefined}
+      />
 
-      <div className="overflow-x-auto rounded-xl2 border border-line">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-bone text-mist">
-            <tr>
-              <th className="px-4 py-3 font-medium">Ngày</th>
-              <th className="px-4 py-3 font-medium">Người gửi</th>
-              <th className="px-4 py-3 font-medium">Tiêu đề</th>
-              <th className="px-4 py-3 font-medium">Trạng thái</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-mist">Đang tải...</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-mist">Chưa có tin nhắn.</td></tr>
-            ) : (
-              items.map((m) => (
-                <tr key={m.id} className="cursor-pointer border-t border-line hover:bg-bone" onClick={() => setSelected(m)}>
-                  <td className="px-4 py-3 text-mist">{new Date(m.createdAt).toLocaleDateString('vi-VN')}</td>
-                  <td className="px-4 py-3">{m.fullName}<br /><span className="text-xs text-mist">{m.email}</span></td>
-                  <td className="px-4 py-3">{m.subject}</td>
-                  <td className="px-4 py-3">{STATUS_LABEL[m.status]}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {selected && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4" onClick={() => setSelected(null)}>
-          <div className="w-full max-w-lg rounded-xl2 bg-ivory p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display text-xl">{selected.subject}</h3>
-              <button onClick={() => setSelected(null)} className="text-mist">✕</button>
+      <Modal
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        size="lg"
+        title={selected?.subject}
+        description={selected ? formatDateTime(selected.createdAt) : undefined}
+        footer={
+          selected && (
+            <div className="flex w-full flex-wrap items-center justify-between gap-2">
+              <Select size="sm" aria-label="Trạng thái xử lý" wrapperClassName="w-48" value={selected.status} onChange={(v) => changeStatus(selected, v)} options={STATUS_OPTIONS} disabled={saving} />
+              <a href={`mailto:${selected.email}?subject=${encodeURIComponent('Re: ' + selected.subject)}`} className={buttonClass({ size: 'sm' })}>
+                <Reply size={15} /> Trả lời qua email
+              </a>
             </div>
-            <p className="text-sm text-mist">{selected.fullName} · {selected.email}{selected.phone ? ` · ${selected.phone}` : ''}</p>
-            <p className="mt-4 whitespace-pre-wrap text-sm text-graphite">{selected.content}</p>
-            <div className="mt-6">
-              <p className="eyebrow mb-2">Trạng thái xử lý</p>
-              <select className={selectCls} value={selected.status} onChange={(e) => changeStatus(selected.id, e.target.value)}>
-                {Object.entries(STATUS_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
+          )
+        }
+      >
+        {selected && (
+          <div>
+            <div className="mb-5 flex flex-wrap gap-x-5 gap-y-2 rounded-2xl bg-muted p-4 text-sm">
+              <span className="font-semibold">{selected.fullName}</span>
+              <span className="flex items-center gap-1.5 text-ink-2"><Mail size={14} /> {selected.email}</span>
+              {selected.phone && <span className="flex items-center gap-1.5 text-ink-2"><Phone size={14} /> {selected.phone}</span>}
             </div>
+            <p className="whitespace-pre-wrap leading-relaxed text-ink-2">{selected.content}</p>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </Modal>
+    </>
   );
 }

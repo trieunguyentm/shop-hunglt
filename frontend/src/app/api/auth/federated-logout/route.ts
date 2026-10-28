@@ -11,7 +11,9 @@ import type { NextRequest } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   const issuer = process.env.NEXT_PUBLIC_KEYCLOAK_ISSUER ?? process.env.AUTH_KEYCLOAK_ISSUER;
-  const origin = req.nextUrl.origin;
+  // Sau Docker/reverse proxy, req.nextUrl.origin là địa chỉ nội bộ (vd :3000 trong container)
+  // → ưu tiên URL public đã cấu hình để Keycloak chuyển người dùng về đúng site.
+  const origin = (process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? req.nextUrl.origin).replace(/\/$/, '');
 
   if (!issuer) {
     // Không cấu hình issuer → cứ đăng xuất cục bộ, về trang chủ.

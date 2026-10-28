@@ -1,12 +1,7 @@
 import { Dashboard } from '@/components/admin/Dashboard';
 
-export const metadata = { title: 'Quản trị — MAISON' };
+export const metadata = { title: 'Bảng điều khiển' };
 
-export default function AdminDashboardPage() {
-  return (
-    <div>
-      <h1 className="mb-8 text-display-md">Tổng quan</h1>
-      <Dashboard />
-    </div>
-  );
+export default function Page() {
+  return <Dashboard />;
 }

@@ -1,12 +1,7 @@
 import { ContactManager } from '@/components/admin/ContactManager';
 
-export const metadata = { title: 'Tin nhắn liên hệ — MAISON' };
+export const metadata = { title: 'Liên hệ' };
 
-export default function AdminContactPage() {
-  return (
-    <div>
-      <h1 className="mb-8 text-display-md">Tin nhắn liên hệ</h1>
-      <ContactManager />
-    </div>
-  );
+export default function Page() {
+  return <ContactManager />;
 }

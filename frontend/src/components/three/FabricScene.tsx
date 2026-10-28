@@ -7,7 +7,7 @@ import * as THREE from 'three';
 /**
  * Hiệu ứng "Silk Orbit" — đám hạt phân bố trên mặt cầu (Fibonacci sphere),
  * xoay chậm + "thở" nhẹ + parallax theo con trỏ. Tối giản, sang trọng, đúng tinh thần
- * editorial fashion. Đóng khung an toàn (camera lùi xa) nên không bao giờ bị cắt.
+ * phong cách trẻ. Đóng khung an toàn (camera lùi xa) nên không bao giờ bị cắt.
  * Xem skill motion-3d để biết quy tắc hiệu năng.
  */
 
@@ -90,13 +90,13 @@ function Orbit() {
 
   return (
     <group ref={group}>
-      {/* Vỏ ngoài — màu đất nung thương hiệu */}
-      <PointSphere count={2800} radius={2.6} color="#B25C3C" size={0.04} speed={0.05} />
-      {/* Lớp giữa — sắc nhạt hơn tạo chiều sâu */}
+      {/* Vỏ ngoài — coral thương hiệu */}
+      <PointSphere count={2800} radius={2.6} color="#FF4D2E" size={0.04} speed={0.05} />
+      {/* Lớp giữa — lime tạo điểm nhấn trẻ trung */}
       <PointSphere
         count={1400}
         radius={1.9}
-        color="#D98E6E"
+        color="#D7FF3D"
         size={0.035}
         speed={-0.07}
         opacity={0.85}
@@ -105,7 +105,7 @@ function Orbit() {
       <PointSphere
         count={700}
         radius={1.1}
-        color="#1A1714"
+        color="#111113"
         size={0.03}
         speed={0.1}
         opacity={0.7}

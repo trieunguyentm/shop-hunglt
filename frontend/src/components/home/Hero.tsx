@@ -1,83 +1,104 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useRef } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { ArrowRight, RotateCcw, Sparkles, Truck } from 'lucide-react';
 import { ButtonLink } from '@/components/ui/Button';
+import { SITE_IMAGES } from '@/lib/images';
 
-// Nạp scene 3D ở client, không SSR (three.js cần window)
-const FabricScene = dynamic(() => import('@/components/three/FabricScene'), {
-  ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse rounded-full bg-bone" />,
-});
+// Scene 3D chỉ chạy ở client (three.js cần window) — làm nền trang trí phía sau ảnh
+const FabricScene = dynamic(() => import('@/components/three/FabricScene'), { ssr: false });
 
 export function Hero() {
-  const root = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLElement>(null);
 
-  // Intro timeline: các dòng chữ trượt lên lần lượt
+  // Intro timeline: chữ trượt lên lần lượt, ảnh nổi lên
   useGSAP(
     () => {
-      // Tôn trọng prefers-reduced-motion: bỏ qua intro animation
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
-      tl.from('[data-hero-line]', {
-        yPercent: 120,
-        duration: 1.1,
-        stagger: 0.12,
-      })
-        .from('[data-hero-sub]', { opacity: 0, y: 20, duration: 0.8 }, '-=0.5')
-        .from('[data-hero-cta]', { opacity: 0, y: 20, duration: 0.7 }, '-=0.5')
-        .from('[data-hero-3d]', { opacity: 0, scale: 0.85, duration: 1.2 }, '-=1.1');
+      tl.from('[data-hero-line]', { yPercent: 110, duration: 1, stagger: 0.1 })
+        .from('[data-hero-fade]', { opacity: 0, y: 16, duration: 0.6, stagger: 0.08 }, '-=0.6')
+        .from('[data-hero-img]', { opacity: 0, y: 40, rotate: 0, duration: 1, stagger: 0.12 }, '-=0.9')
+        .from('[data-hero-sticker]', { scale: 0, rotate: -40, duration: 0.6, ease: 'back.out(2)' }, '-=0.4');
     },
     { scope: root },
   );
 
   return (
-    <section
-      ref={root}
-      className="relative min-h-screen overflow-hidden pt-[var(--header-h)]"
-    >
-      <div className="container-page grid min-h-[calc(100vh-var(--header-h))] items-center gap-8 lg:grid-cols-2">
+    <section ref={root} className="relative overflow-hidden">
+      <div className="container-page grid items-center gap-10 pb-16 pt-8 sm:pt-12 lg:min-h-[calc(100vh-var(--header-h)-36px)] lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:py-12">
         {/* Cột chữ */}
-        <div className="relative z-10 py-16">
-          <p className="eyebrow mb-6">Bộ sưu tập Xuân — Hè 2026</p>
-          {/* pt/pb + margin âm: mở rộng vùng hiển thị cho dấu tiếng Việt & đuôi chữ (g, y)
-              mà không phá vỡ canh dòng — tránh bị overflow-hidden cắt mất glyph. */}
-          <h1 className="text-display-xl">
-            <span className="block overflow-hidden pb-[0.18em] -mb-[0.12em] pt-[0.12em] -mt-[0.12em]">
-              <span data-hero-line className="block leading-[1.06]">
-                Phong cách
+        <div className="relative z-10">
+          <p data-hero-fade className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold shadow-soft">
+            <span className="rounded-full bg-lime-400 px-2 py-0.5 text-2xs font-bold uppercase">Mới</span>
+            Bộ sưu tập Thu — Đông 2026
+          </p>
+
+          {/* pb + margin âm: chừa chỗ cho dấu tiếng Việt khi overflow-hidden */}
+          <h1 className="heading-display">
+            <span className="block overflow-hidden pb-[0.12em] -mb-[0.12em]">
+              <span data-hero-line className="block">
+                Mặc đơn giản,
               </span>
             </span>
-            <span className="block overflow-hidden pb-[0.18em] -mb-[0.12em] pt-[0.12em] -mt-[0.12em]">
-              <span data-hero-line className="block italic leading-[1.06] text-clay">
-                vượt thời gian
+            <span className="block overflow-hidden pb-[0.14em] -mb-[0.12em]">
+              <span data-hero-line className="block">
+                sống <span className="mark-lime">thật chất</span>
+                <span className="text-brand-500">.</span>
               </span>
             </span>
           </h1>
-          <p data-hero-sub className="mt-7 max-w-md text-base leading-relaxed text-graphite">
-            Những thiết kế tối giản, chất liệu bền vững, tôn vinh vẻ đẹp tự nhiên
-            của người mặc trong từng chuyển động.
+
+          <p data-hero-fade className="mt-6 max-w-md text-base text-ink-2 sm:text-lg">
+            Basic dễ phối, chất liệu thoáng mát, form chuẩn dáng người Việt. Lên đồ đi học, đi làm hay đi chơi đều ổn.
           </p>
-          <div data-hero-cta className="mt-9 flex flex-wrap items-center gap-4">
-            <ButtonLink href="/products">Khám phá ngay</ButtonLink>
-            <ButtonLink href="/#collections" variant="outline">
+
+          <div data-hero-fade className="mt-8 flex flex-wrap items-center gap-3">
+            <ButtonLink href="/products" size="lg" rightIcon={<ArrowRight size={18} />}>
+              Mua sắm ngay
+            </ButtonLink>
+            <ButtonLink href="/collections" size="lg" variant="outline">
               Xem bộ sưu tập
             </ButtonLink>
           </div>
+
+          <ul data-hero-fade className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-ink-2">
+            <li className="flex items-center gap-2"><Truck size={17} className="text-brand-600" /> Giao toàn quốc</li>
+            <li className="flex items-center gap-2"><RotateCcw size={17} className="text-brand-600" /> Đổi trả 30 ngày</li>
+            <li className="flex items-center gap-2"><Sparkles size={17} className="text-brand-600" /> Mẫu mới mỗi tuần</li>
+          </ul>
         </div>
 
-        {/* Cột 3D */}
-        <div data-hero-3d className="relative h-[42vh] w-full lg:h-[80vh]">
-          <FabricScene />
+        {/* Cột ảnh collage */}
+        <div className="relative mx-auto h-[440px] w-full max-w-[520px] sm:h-[540px] lg:h-[600px]">
+          <div className="pointer-events-none absolute -inset-10 hidden opacity-60 lg:block" aria-hidden>
+            <FabricScene />
+          </div>
+          <div data-hero-img className="absolute left-0 top-0 h-[78%] w-[62%] -rotate-3 overflow-hidden rounded-[2rem] border-4 border-surface bg-muted shadow-pop">
+            <Image src={SITE_IMAGES.hero[0]} alt="Người mẫu mặc hoodie và quần jogger" fill priority sizes="(max-width: 1024px) 60vw, 30vw" className="object-cover" />
+          </div>
+          <div data-hero-img className="absolute bottom-0 right-0 h-[70%] w-[56%] rotate-3 overflow-hidden rounded-[2rem] border-4 border-surface bg-muted shadow-pop">
+            <Image src={SITE_IMAGES.hero[1]} alt="Người mẫu nam phong cách streetwear" fill priority sizes="(max-width: 1024px) 55vw, 28vw" className="object-cover" />
+          </div>
+          <div
+            data-hero-sticker
+            className="absolute right-[8%] top-[6%] grid h-24 w-24 rotate-12 place-items-center rounded-full bg-lime-400 text-center text-ink shadow-pop sm:h-28 sm:w-28"
+          >
+            <span className="text-xs font-extrabold uppercase leading-tight">
+              Giảm
+              <span className="block text-2xl sm:text-3xl">10%</span>
+              từ 300K
+            </span>
+          </div>
+          <div data-hero-img className="absolute bottom-[10%] left-[4%] rounded-2xl bg-surface px-4 py-3 shadow-pop">
+            <p className="text-2xs font-semibold uppercase tracking-wider text-ink-3">Mã giảm giá</p>
+            <p className="text-lg font-extrabold tracking-wide">WELCOME10</p>
+          </div>
         </div>
-      </div>
-
-      {/* Gợi ý cuộn */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
-        <span className="eyebrow">Cuộn xuống</span>
-        <div className="mx-auto mt-3 h-10 w-px bg-gradient-to-b from-ink/40 to-transparent" />
       </div>
     </section>
   );

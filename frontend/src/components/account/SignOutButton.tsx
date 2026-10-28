@@ -1,22 +1,24 @@
 'use client';
 
 import { useState } from 'react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { federatedSignOut } from '@/lib/logout';
 
-export function SignOutButton() {
+export function SignOutButton({ block }: { block?: boolean }) {
   const [busy, setBusy] = useState(false);
-
   return (
     <Button
       variant="outline"
-      disabled={busy}
+      block={block}
+      loading={busy}
+      leftIcon={<LogOut size={16} />}
       onClick={() => {
         setBusy(true);
         void federatedSignOut();
       }}
     >
-      {busy ? 'Đang đăng xuất…' : 'Đăng xuất'}
+      Đăng xuất
     </Button>
   );
 }

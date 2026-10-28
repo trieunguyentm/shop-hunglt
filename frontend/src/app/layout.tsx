@@ -1,23 +1,15 @@
-import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
+import { Montserrat } from 'next/font/google';
 import './globals.css';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
-import { Toaster } from 'sonner';
 import { AuthProvider } from '@/components/providers/AuthProvider';
+import { AppToaster } from '@/components/providers/AppToaster';
+import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import { CartSync } from '@/components/cart/CartSync';
 
-// Serif display cho tiêu đề (đặc trưng tạp chí thời trang)
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-  axes: ['opsz'],
-});
-
-// Sans cho nội dung
-const inter = Inter({
+// Montserrat — cùng họ font với hocthongminh.com, có đủ dấu tiếng Việt
+const montserrat = Montserrat({
   subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-sans',
   display: 'swap',
 });
@@ -25,32 +17,35 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
   title: {
-    default: 'MAISON — Thời trang tối giản, bền vững',
+    default: 'MAISON — Thời trang trẻ, mặc là chất',
     template: '%s · MAISON',
   },
-  description:
-    'Hệ thống bán hàng thời trang MAISON. Thiết kế tối giản cao cấp, chất liệu bền vững.',
-  keywords: ['thời trang', 'MAISON', 'tối giản', 'bền vững', 'thời trang Việt Nam'],
+  description: 'MAISON — thời trang trẻ trung, tối giản và dễ phối. Giao hàng toàn quốc, đổi trả 30 ngày.',
+  keywords: ['thời trang', 'MAISON', 'streetwear', 'thời trang trẻ', 'thời trang Việt Nam'],
   openGraph: {
     type: 'website',
     locale: 'vi_VN',
-    title: 'MAISON — Thời trang tối giản, bền vững',
-    description: 'Thiết kế tối giản cao cấp, chất liệu bền vững.',
+    title: 'MAISON — Thời trang trẻ, mặc là chất',
+    description: 'Thời trang trẻ trung, tối giản và dễ phối.',
     siteName: 'MAISON',
   },
   robots: { index: true, follow: true },
 };
 
+export const viewport: Viewport = {
+  themeColor: '#FAFAF7',
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={`${fraunces.variable} ${inter.variable}`}>
+    <html lang="vi" className={montserrat.variable}>
       <body>
         <AuthProvider>
-          <CartSync />
-          <Header />
-          <main>{children}</main>
-          <Footer />
-          <Toaster position="top-center" toastOptions={{ style: { fontFamily: 'var(--font-sans)' } }} />
+          <ConfirmProvider>
+            <CartSync />
+            {children}
+            <AppToaster />
+          </ConfirmProvider>
         </AuthProvider>
       </body>
     </html>
